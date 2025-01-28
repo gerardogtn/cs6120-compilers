@@ -117,17 +117,6 @@ data class BrilLabel(
     val pos: BrilSourcePosition?,
 ) : BrilInstr
 
-data class BrilOpJson(
-    val op: String,
-    val dest: String?,
-    val type: BrilType?,
-    val value: JsonReader?,
-    val args: List<String>?,
-    val funcs: List<String>?,
-    val labels: List<String>?,
-    val pos: BrilSourcePosition?,
-)
-
 sealed interface BrilPrimitiveValueType
 
 class BrilPrimitiveValueTypeAdapter {
@@ -175,84 +164,6 @@ data class BrilOp(
     val labels: List<String>?,
     val pos: BrilSourcePosition?,
 ): BrilInstr
-
-class BrilOpAdapter {
-    
-    @FromJson
-    fun fromJson(
-        brilOpJson: BrilOpJson,
-    ): BrilOp {
-        return BrilOp(
-            op = brilOpJson.op,
-            dest = brilOpJson.dest,
-            type = brilOpJson.type,
-            value = when (val type = brilOpJson.type) {
-                is BrilPrimitiveType -> {
-                   val value = brilOpJson.value
-                   if (value == null) {
-                       null
-                   } else if (type.name == "int") {
-                       BrilPrimitiveValueInt(value.nextInt())
-                   } else if (type.name == "bool") {
-                       BrilPrimitiveValueBool(value.nextBoolean())
-                   } else {
-                       null
-                   }
-                }
-                else -> null
-            },
-            args = brilOpJson.args,
-            funcs = brilOpJson.funcs,
-            labels = brilOpJson.labels,
-            pos = brilOpJson.pos,
-        )
-    }
-
-    @ToJson
-    fun toJson(
-        writer: JsonWriter,
-        brilOp: BrilOp,
-        typeDelegate: JsonAdapter<BrilType>,
-        listDelegate: JsonAdapter<List<String>?>,
-        posDelegate: JsonAdapter<BrilSourcePosition?>,
-    ) { 
-        writer.beginObject()
-        writer.name("op")
-        writer.value(brilOp.op)
-        if (brilOp.dest != null) {
-            writer.name("dest")
-            writer.value(brilOp.dest)
-        }
-        if (brilOp.type != null) {
-            writer.name("type")
-            typeDelegate.toJson(writer, brilOp.type)
-        }
-        if (brilOp.value != null) {
-            writer.name("value")
-            when (brilOp.value) {
-                is BrilPrimitiveValueInt -> writer.value(brilOp.value.value)
-                is BrilPrimitiveValueBool -> writer.value(brilOp.value.value)
-            }
-        }
-        if (brilOp.args != null) {
-            writer.name("args")
-            listDelegate.toJson(writer, brilOp.args)
-        }
-        if (brilOp.funcs != null) {
-            writer.name("funcs")
-            listDelegate.toJson(writer, brilOp.funcs)
-        }
-        if (brilOp.labels != null) {
-            writer.name("labels")
-            listDelegate.toJson(writer, brilOp.funcs)
-        }
-        if (brilOp.pos != null) {
-            writer.name("pos")
-            posDelegate.toJson(writer, brilOp.pos)
-        }
-        writer.endObject()
-    }
-}       
 
 data class BrilSourcePosition(
     val pos: BrilPos,
@@ -355,17 +266,6 @@ fun nextName(vars: LinkedList<String>): String {
     val name = vars.get(0)!!
     vars.removeAt(0)
     return name
-}
-
-fun rename(
-    vars: LinkedList<String>,
-    arg: BrilArg
-): BrilArg {
-    val name = vars.get(0)!!
-    vars.removeAt(0)
-    return arg.copy(
-        name = name
-    )
 }
 
 @kotlin.ExperimentalStdlibApi
