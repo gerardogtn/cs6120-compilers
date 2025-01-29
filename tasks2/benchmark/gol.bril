@@ -3,6 +3,7 @@
 # Will print the randomly generated matrix. (13, index, value)
 # Print the number 3 as a separator.
 # And print the the next matrix in Conway's game of life. (13, index, value)
+# ARGS: 3 4
 @main(n: int, seed: int) {
     id: int = const 3;
     one: int = const 1;
