@@ -741,11 +741,13 @@ fun labelToBlock(
     return result
 }
 
+typealias Cfg = TreeMap<Int, TreeSet<Int>>
+
 fun cfg(
     blocks: List<Block>,
     labelToBlock: TreeMap<String, Int>,
-): TreeMap<Int, TreeSet<Int>> {
-    val result = TreeMap<Int, TreeSet<Int>>()
+): Cfg {
+    val result = Cfg()
     blocks.forEachIndexed { i, b -> 
         val edgesOut = TreeSet<Int>()
         val last = b.lastOrNull() as? BrilOp
