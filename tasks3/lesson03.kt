@@ -182,6 +182,17 @@ sealed interface BrilOp : BrilInstr {
     val op: String
 }
 
+data class BrilUnknownOp(
+    override val op: String,
+    val dest: String?,
+    val type: BrilType?,
+    val value: BrilPrimitiveValueType?,
+    val args: List<String>?,
+    val funcs: List<String>?,
+    val labels: List<String>?,
+    val pos: BrilSourcePosition?,
+): BrilOp
+ 
 data class BrilConstOp(
     override val op: String,
     val dest: String?,
@@ -455,7 +466,16 @@ class BrilOpAdapter {
             "nop" -> BrilNopOp(
                 op = brilOpJson.op,
             )
-            else -> throw IllegalStateException("Unexpected bril type $brilOpJson")
+            else -> BrilUnknownOp(
+                op = brilOpJson.op,
+                dest = brilOpJson.dest,
+                type = brilOpJson.type,
+                value = brilOpJson.value,
+                args = brilOpJson.args,
+                funcs = brilOpJson.funcs,
+                labels = brilOpJson.labels,
+                pos = brilOpJson.pos,
+            )
         }
     }
 
@@ -464,6 +484,16 @@ class BrilOpAdapter {
         brilOp: BrilOp
     ): BrilOpJson {
         return when(brilOp) {
+            is BrilUnknownOp -> BrilOpJson(
+                op = brilOp.op,
+                dest = brilOp.dest,
+                type = brilOp.type,
+                value = brilOp.value,
+                args = brilOp.args,
+                funcs = brilOp.funcs,
+                labels = brilOp.labels,
+                pos = brilOp.pos,
+            )
             is BrilAddOp -> BrilOpJson(
                 op = brilOp.op,
                 dest = brilOp.dest,
@@ -599,7 +629,7 @@ class BrilOpAdapter {
                 dest = null,
                 type = null,
                 value = null,
-                args = null,
+                args = listOf(brilOp.arg),
                 funcs = null,
                 labels = listOf(brilOp.labelL, brilOp.labelR),
                 pos = null,
@@ -921,6 +951,9 @@ fun BrilInstr.renameVars(
         is BrilPrintOp -> this.copy(
             args = this.args?.map { swaps.get(it) ?: it },
         )
+        is BrilUnknownOp -> this.copy(
+            args = this.args?.map { swaps.get(it) ?: it },
+        )
         else -> this
     }
 }
@@ -1010,11 +1043,7 @@ fun main(args: Array<String>) {
         System.`in`.source().buffer()
     }
 
-    val program = try {
-        adapter.fromJson(source)
-    } catch (e: Exception) {
-        null
-    }
+    val program = adapter.fromJson(source)
 
     if (program != null) {
         val nprogram = program.copy(
