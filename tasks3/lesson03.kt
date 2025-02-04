@@ -72,6 +72,15 @@ data class BrilParameterizedType(
 
 sealed interface BrilInstr
 
+fun BrilInstr.dest(): String? {
+    return when(this) {
+        is BrilConstOp -> this.dest
+        is BrilAddOp -> this.dest
+        else -> null
+    }
+}
+
+
 class BrilInstrAdapter {
 
     @FromJson
@@ -764,9 +773,228 @@ fun cfg(
     return result
 }
 
+sealed interface LocalValue 
+
+data class InstrValue(
+    val instr: BrilInstr,
+) : LocalValue 
+
+data class SumValueSingle(
+    val l: Int,
+    val r: String,
+): LocalValue
+
+data class SumValueDouble(
+    val l: Int,
+    val r: Int,
+): LocalValue
+
+typealias Lvn = TreeMap<Int, LocalValue>
+typealias LvnContext = TreeMap<String, Int>
+typealias LvnEnv = TreeMap<Int, String>
+typealias LvnVars = TreeMap<Int, Pair<String, BrilType>>
+
+fun BrilInstr.toLocalValue(ctxt: LvnContext): LocalValue {
+    return when (this) {
+        is BrilAddOp -> this.toLocalValue(ctxt)
+        is BrilConstOp -> InstrValue(this)
+        else -> InstrValue(this)
+    }
+}
+
+fun BrilAddOp.toLocalValue(ctxt: LvnContext): LocalValue {
+    if (ctxt.contains(this.argL) && ctxt.contains(this.argR)) {
+        return SumValueDouble(
+            l = ctxt.get(this.argL)!!,
+            r = ctxt.get(this.argR)!!,
+        )
+    } else {
+        return InstrValue(this)
+    }
+}
+
+fun BrilInstr.destInfo(): Pair<String?, BrilType?> {
+    return when(this) {
+        is BrilConstOp -> this.dest to this.type
+        is BrilAddOp -> this.dest to this.type
+        else -> null to null
+    }
+}
+
+fun lvn(
+    block: Block
+) : Block {
+    val lvn = Lvn()
+    val ctxt = LvnContext()
+    val vls = HashMap<LocalValue, Int>()
+    val env = LvnEnv()
+    val vars = LvnVars()
+    var swaps = TreeMap<String, String>()
+    block.forEachIndexed { i, instr -> 
+        val localValue: LocalValue = instr.toLocalValue(ctxt)
+        val (dest, type) = instr.destInfo()
+
+        if (localValue in vls) {
+            val pos = vls.get(localValue)!!
+            if (dest != null) {
+                ctxt.put(dest, pos)
+                swaps.put(dest, env.get(pos)!!)
+            }
+        } else {
+            if (dest != null) {
+                vars.put(i, dest to type!!)
+            }
+            lvn.put(i, localValue)
+            vls.put(localValue, i)
+            if (dest !=  null) {
+                ctxt.put(dest, i)
+                env.put(i, dest)
+            }
+        }
+    }
+    val res = Block()
+    lvn.forEach { (i, v) -> 
+        val (dest, type) = vars.get(i) ?: null to null
+        val instr = v.toInstr(env, dest, type, swaps)
+        res.add(instr)
+    }
+    return res
+}
+
+fun BrilInstr.renameVars(
+    swaps: Map<String, String>
+): BrilInstr {
+    return when(this) {
+        is BrilAddOp -> this.copy(
+            argL = swaps.get(argL) ?: argL,
+            argR = swaps.get(argR) ?: argR,
+        )
+        is BrilMulOp -> this.copy(
+            argL = swaps.get(argL) ?: argL,
+            argR = swaps.get(argR) ?: argR,
+        ) 
+        is BrilSubOp -> this.copy(
+            argL = swaps.get(argL) ?: argL,
+            argR = swaps.get(argR) ?: argR,
+        ) 
+        is BrilDivOp -> this.copy(
+            argL = swaps.get(argL) ?: argL,
+            argR = swaps.get(argR) ?: argR,
+        )  
+        is BrilAndOp -> this.copy(
+            argL = swaps.get(argL) ?: argL,
+            argR = swaps.get(argR) ?: argR,
+        ) 
+        is BrilOrOp -> this.copy(
+            argL = swaps.get(argL) ?: argL,
+            argR = swaps.get(argR) ?: argR,
+        ) 
+        is BrilNotOp -> this.copy(
+            arg = swaps.get(arg) ?: arg,
+        )
+        is BrilEqOp -> this.copy(
+            argL = swaps.get(argL) ?: argL,
+            argR = swaps.get(argR) ?: argR,
+        )  
+        is BrilGtOp -> this.copy(
+            argL = swaps.get(argL) ?: argL,
+            argR = swaps.get(argR) ?: argR,
+        ) 
+        is BrilLtOp -> this.copy(
+            argL = swaps.get(argL) ?: argL,
+            argR = swaps.get(argR) ?: argR,
+        ) 
+        is BrilGeOp -> this.copy(
+            argL = swaps.get(argL) ?: argL,
+            argR = swaps.get(argR) ?: argR,
+        ) 
+        is BrilLeOp -> this.copy(
+            argL = swaps.get(argL) ?: argL,
+            argR = swaps.get(argR) ?: argR,
+        ) 
+        is BrilCallOp -> this.copy(
+            args = this.args?.map { swaps.get(it) ?: it },
+        )
+        is BrilRetOp -> this.copy(
+            arg = this.arg?.let { swaps.get(it) ?: it },
+        )
+        is BrilIdOp -> this.copy(
+            arg = swaps.get(arg) ?: arg,
+        )
+        is BrilPrintOp -> this.copy(
+            args = this.args?.map { swaps.get(it) ?: it },
+        )
+        else -> this
+    }
+}
+
+fun LocalValue.toInstr(
+    lvnEnv: LvnEnv,
+    dest: String?,
+    type: BrilType?,
+    swaps: Map<String, String>,
+): BrilInstr {
+    return when (this) {
+        is InstrValue -> this.toInstr(lvnEnv, dest, type, swaps)
+        is SumValueSingle -> this.toInstr(lvnEnv, dest, type)
+        is SumValueDouble -> this.toInstr(lvnEnv, dest, type)
+    }
+}
+
+fun InstrValue.toInstr(
+    lvnEnv: LvnEnv,
+    dest: String?,
+    type: BrilType?,
+    swaps: Map<String, String>,
+): BrilInstr = this.instr.renameVars(swaps)
+
+fun SumValueSingle.toInstr(
+    lvnEnv: LvnEnv,
+    dest: String?,
+    type: BrilType?,
+): BrilInstr = BrilAddOp(
+    op = "add",
+    argL = lvnEnv.get(l)!!,
+    argR = r,
+    dest = dest,
+    type = type,
+)
+
+fun SumValueDouble.toInstr(
+    lvnEnv: LvnEnv,
+    dest: String?,
+    type: BrilType?,
+): BrilInstr = BrilAddOp(
+    op = "add",
+    argL = lvnEnv.get(l)!!,
+    argR = lvnEnv.get(r)!!,
+    dest = dest,
+    type = type,
+)
+
+
+fun lvn(
+    function: BrilFunction,
+): BrilFunction {
+    val blocks = blocks(function)
+    val nblocks = blocks.map { b -> 
+        var prev: Block? = null
+        var curr = b
+        while (curr != prev) {
+            prev = curr
+            curr = lvn(curr)
+        }
+        curr
+    }
+
+    return function.copy(
+        instrs = nblocks.flatten()
+    )
+}
+
 @kotlin.ExperimentalStdlibApi
 fun main(args: Array<String>) {
-    println("Assignment 3 - Feb/06 - Local Value Numbering")
+    //println("Assignment 3 - Feb/06 - Local Value Numbering")
     //println("build basic blocks and CFG")
     val filename = args[0]
 
@@ -782,26 +1010,10 @@ fun main(args: Array<String>) {
     val program = parseFile(filename, adapter)
 
     if (program != null) {
-        val function = program.functions.first()
-        val blocks = blocks(function)
-        println("Blocks are:")
-        blocks.forEachIndexed { i, b -> 
-            println("Block $i")
-            b.forEach { instr -> 
-                val instrJson = brilInstrAdapter.toJson(instr)
-                println(instrJson) 
-            } 
-        }
-        println("Labels are")
-        val labels = labelToBlock(blocks)
-        labels.forEach { (l, b) -> 
-            println(l)
-        }
-        println("CFG")
-        val cfg = cfg(blocks, labels)
-        cfg.forEach { (id, next) -> 
-            println("Block: $id. Connected to $next")
-        }
-
+        val nprogram = program.copy(
+            functions = program.functions.map(::lvn),
+        )
+        val json = adapter.toJson(nprogram)
+        println(json)
     }
 }
