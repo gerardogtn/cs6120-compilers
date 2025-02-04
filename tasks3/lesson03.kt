@@ -5,6 +5,9 @@ import java.io.File
 import java.io.IOException
 import com.squareup.moshi.*
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import okio.buffer
+import okio.source
+import okio.Okio
 
 // Bril JSON Parsing
 // Using moshi for parsing.
@@ -680,16 +683,10 @@ data class BrilPos(
 @kotlin.ExperimentalStdlibApi
 fun parseFile(
     filename: String,
-    adapter: JsonAdapter<BrilProgram>,
-): BrilProgram? {
-    val s = try {
+): String? {
+    return try {
         File(filename).readText()
     } catch(e: IOException) {
-        null
-    }
-    return if (s != null) {
-        adapter.fromJson(s)
-    } else {
         null
     }
 }
@@ -996,8 +993,6 @@ fun lvn(
 fun main(args: Array<String>) {
     //println("Assignment 3 - Feb/06 - Local Value Numbering")
     //println("build basic blocks and CFG")
-    val filename = args[0]
-
     val moshi = Moshi.Builder()
         .add(BrilPrimitiveValueTypeAdapter())
         .add(BrilTypeAdapter())
@@ -1007,7 +1002,19 @@ fun main(args: Array<String>) {
         .build()
     val adapter: JsonAdapter<BrilProgram> = moshi.adapter<BrilProgram>()
     val brilInstrAdapter = moshi.adapter<BrilInstr>()
-    val program = parseFile(filename, adapter)
+    val source = if (args.size > 0 && args[0].startsWith("-f")) {
+        val file = File(args[1])
+        val source = file.source()
+        source.buffer()
+    } else {
+        System.`in`.source().buffer()
+    }
+
+    val program = try {
+        adapter.fromJson(source)
+    } catch (e: Exception) {
+        null
+    }
 
     if (program != null) {
         val nprogram = program.copy(
