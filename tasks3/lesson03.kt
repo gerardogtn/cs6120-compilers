@@ -8,6 +8,7 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okio.buffer
 import okio.source
 import okio.Okio
+import BrilIdOp
 
 // Bril JSON Parsing
 // Using moshi for parsing.
@@ -37,15 +38,18 @@ class BrilTypeAdapter {
     @FromJson
     fun fromJson(
         reader: JsonReader,
-        parameterizedDelegate: JsonAdapter<BrilParameterizedType>,
+        mapDelegate: JsonAdapter<Map<String, String>>,
     ): BrilType? {
         val nextToken = reader.peek()
-        if (nextToken == JsonReader.Token.BEGIN_OBJECT) {
-            return parameterizedDelegate.fromJson(reader)
+        return if (nextToken == JsonReader.Token.BEGIN_OBJECT) {
+            BrilParameterizedType(
+                map = mapDelegate.fromJson(reader),
+                pos = null,
+            )
         } else if (nextToken == JsonReader.Token.STRING) {
-            return BrilPrimitiveType(reader.nextString(), null)
+            BrilPrimitiveType(reader.nextString(), null)
         } else {
-            return null
+             null
         }
     }
 
@@ -53,12 +57,12 @@ class BrilTypeAdapter {
     fun toJson(
         writer: JsonWriter,
         brilType: BrilType?,
-        parameterizedDelegate: JsonAdapter<BrilParameterizedType>,
+        mapDelegate: JsonAdapter<Map<String, String>>,
     ) {
         when (brilType) {
             null -> writer.nullValue()
             is BrilPrimitiveType -> writer.value(brilType.name)
-            is BrilParameterizedType -> parameterizedDelegate.toJson(writer, brilType)
+            is BrilParameterizedType -> mapDelegate.toJson(writer, brilType.map)
         }
     }
 }
@@ -69,7 +73,7 @@ data class BrilPrimitiveType(
 ) : BrilType
 
 data class BrilParameterizedType(
-    val map: Map<String, String>,
+    val map: Map<String, String>?,
     val pos: BrilSourcePosition?,
 ) : BrilType
 
@@ -79,6 +83,40 @@ fun BrilInstr.dest(): String? {
     return when(this) {
         is BrilConstOp -> this.dest
         is BrilAddOp -> this.dest
+        is BrilMulOp -> this.dest
+        is BrilSubOp -> this.dest
+        is BrilDivOp -> this.dest
+        is BrilNotOp -> this.dest
+        is BrilAndOp -> this.dest
+        is BrilOrOp -> this.dest
+        is BrilEqOp -> this.dest
+        is BrilLeOp -> this.dest
+        is BrilGeOp -> this.dest
+        is BrilLtOp -> this.dest
+        is BrilGtOp -> this.dest
+        is BrilCallOp -> this.dest
+        is BrilIdOp -> this.dest
+        else -> null
+    }
+}
+
+fun BrilInstr.type(): BrilType? {
+    return when(this) {
+        is BrilConstOp -> this.type
+        is BrilAddOp -> this.type
+        is BrilMulOp -> this.type
+        is BrilSubOp -> this.type
+        is BrilDivOp -> this.type
+        is BrilNotOp -> this.type
+        is BrilAndOp -> this.type
+        is BrilOrOp -> this.type
+        is BrilEqOp -> this.type
+        is BrilLeOp -> this.type
+        is BrilGeOp -> this.type
+        is BrilLtOp -> this.type
+        is BrilGtOp -> this.type
+        is BrilCallOp -> this.type
+        is BrilIdOp -> this.type
         else -> null
     }
 }
@@ -141,7 +179,13 @@ class BrilPrimitiveValueTypeAdapter {
         val peek = reader.peek()
         return when (peek) {
             JsonReader.Token.BOOLEAN -> BrilPrimitiveValueBool(reader.nextBoolean())
-            JsonReader.Token.NUMBER -> BrilPrimitiveValueInt(reader.nextInt())
+            JsonReader.Token.NUMBER -> {
+                try {
+                    BrilPrimitiveValueInt(reader.nextInt())
+                } catch (e: JsonDataException) {
+                    BrilPrimitiveValueDouble(reader.nextDouble())
+                }
+            }
             else -> null
         }
     }
@@ -154,6 +198,7 @@ class BrilPrimitiveValueTypeAdapter {
         when (primitiveType) {
             is BrilPrimitiveValueInt -> writer.value(primitiveType.value)
             is BrilPrimitiveValueBool -> writer.value(primitiveType.value)
+            is BrilPrimitiveValueDouble -> writer.value(primitiveType.value)
             else -> writer.nullValue()
         }
     }
@@ -165,6 +210,10 @@ data class BrilPrimitiveValueInt(
 
 data class BrilPrimitiveValueBool(
     val value: Boolean,
+): BrilPrimitiveValueType
+
+data class BrilPrimitiveValueDouble(
+    val value: Double,
 ): BrilPrimitiveValueType
 
 data class BrilOpJson(
@@ -802,18 +851,17 @@ fun cfg(
 
 sealed interface LocalValue 
 
-data class InstrValue(
-    val instr: BrilInstr,
-) : LocalValue 
-
-data class SumValueSingle(
-    val l: Int,
-    val r: String,
-): LocalValue
-
-data class SumValueDouble(
+data class LocalSumValue(
     val l: Int,
     val r: Int,
+): LocalValue
+
+data class LocalConstValue(
+    val literal: BrilPrimitiveValueType,
+): LocalValue
+
+data class LocalIdValue(
+    val pos: Int,
 ): LocalValue
 
 typealias Lvn = TreeMap<Int, LocalValue>
@@ -821,71 +869,104 @@ typealias LvnContext = TreeMap<String, Int>
 typealias LvnEnv = TreeMap<Int, String>
 typealias LvnVars = TreeMap<Int, Pair<String, BrilType>>
 
-fun BrilInstr.toLocalValue(ctxt: LvnContext): LocalValue {
+fun BrilInstr.toLocalValue(
+    var2p: LvnContext,
+    val2p: Map<LocalValue, Int>,
+): LocalValue? {
     return when (this) {
-        is BrilAddOp -> this.toLocalValue(ctxt)
-        is BrilConstOp -> InstrValue(this)
-        else -> InstrValue(this)
+        is BrilAddOp -> this.toLocalValue(var2p, val2p)
+        is BrilConstOp -> LocalConstValue(this.value)
+        is BrilIdOp -> this.toLocalValue(var2p)
+        else -> null
     }
 }
 
-fun BrilAddOp.toLocalValue(ctxt: LvnContext): LocalValue {
-    if (ctxt.contains(this.argL) && ctxt.contains(this.argR)) {
-        return SumValueDouble(
-            l = ctxt.get(this.argL)!!,
-            r = ctxt.get(this.argR)!!,
+fun BrilIdOp.toLocalValue(
+    var2p: LvnContext,
+): LocalValue? {
+    if (!var2p.contains(this.arg)) {
+        return null;
+    }
+    return LocalIdValue(var2p.get(this.arg)!!)
+}
+
+fun BrilAddOp.toLocalValue(
+    var2p: LvnContext,
+    val2p: Map<LocalValue, Int>,
+): LocalValue? {
+    if (!var2p.contains(this.argL)) {
+        return null;
+    }
+    if (!var2p.contains(this.argR)) {
+        return null;
+    }
+    val value = LocalSumValue(
+        l = var2p.get(this.argL)!!,
+        r = var2p.get(this.argR)!!,
+    )
+    return if (val2p.contains(value)) {
+        LocalIdValue(
+            pos = val2p.get(value)!!
         )
     } else {
-        return InstrValue(this)
-    }
-}
-
-fun BrilInstr.destInfo(): Pair<String?, BrilType?> {
-    return when(this) {
-        is BrilConstOp -> this.dest to this.type
-        is BrilAddOp -> this.dest to this.type
-        else -> null to null
+        value
     }
 }
 
 fun lvn(
     block: Block
 ) : Block {
-    val lvn = Lvn()
-    val ctxt = LvnContext()
-    val vls = HashMap<LocalValue, Int>()
-    val env = LvnEnv()
-    val vars = LvnVars()
-    var swaps = TreeMap<String, String>()
+    val p2val = Lvn()
+    val val2p = HashMap<LocalValue, Int>()
+    val p2var = TreeMap<Int, String>()
+    val var2p = LvnContext()
     block.forEachIndexed { i, instr -> 
-        val localValue: LocalValue = instr.toLocalValue(ctxt)
-        val (dest, type) = instr.destInfo()
-
-        if (localValue in vls) {
-            val pos = vls.get(localValue)!!
-            if (dest != null) {
-                ctxt.put(dest, pos)
-                swaps.put(dest, env.get(pos)!!)
-            }
-        } else {
-            if (dest != null) {
-                vars.put(i, dest to type!!)
-            }
-            lvn.put(i, localValue)
-            vls.put(localValue, i)
-            if (dest !=  null) {
-                ctxt.put(dest, i)
-                env.put(i, dest)
+        val localValue: LocalValue? = instr.toLocalValue(
+            var2p,
+            val2p
+        )
+        if (localValue != null) {
+            p2val.put(i, localValue)
+            val2p.put(localValue, i)
+            instr.dest()?.let { varname ->
+                p2var.put(i, varname)
+                var2p.put(varname, i)
             }
         }
     }
     val res = Block()
-    lvn.forEach { (i, v) -> 
-        val (dest, type) = vars.get(i) ?: null to null
-        val instr = v.toInstr(env, dest, type, swaps)
+    block.forEachIndexed { i, instr -> 
+        val instr = if (!p2val.contains(i)) {
+            instr
+        } else {
+            p2val.get(i)!!.toInstr(instr, i, p2var)   
+        }
         res.add(instr)
     }
     return res
+}
+
+fun LocalValue.toInstr(
+    instr: BrilInstr,
+    i: Int,
+    p2var: Map<Int, String>,
+): BrilInstr {
+    return when(val localValue = this) {
+        is LocalConstValue -> instr
+        is LocalIdValue -> BrilIdOp(
+            op = "id",
+            dest = instr.dest()!!,
+            type = instr.type()!!,
+            arg = p2var.get(localValue.pos)!!
+        )
+        is LocalSumValue -> BrilAddOp(
+            op = "add", 
+            dest = instr.dest()!!, 
+            type = instr.type()!!,
+            argL = p2var.get(localValue.l)!!,
+            argR = p2var.get(localValue.r)!!,
+        )
+    }
 }
 
 fun BrilInstr.renameVars(
@@ -957,51 +1038,6 @@ fun BrilInstr.renameVars(
         else -> this
     }
 }
-
-fun LocalValue.toInstr(
-    lvnEnv: LvnEnv,
-    dest: String?,
-    type: BrilType?,
-    swaps: Map<String, String>,
-): BrilInstr {
-    return when (this) {
-        is InstrValue -> this.toInstr(lvnEnv, dest, type, swaps)
-        is SumValueSingle -> this.toInstr(lvnEnv, dest, type)
-        is SumValueDouble -> this.toInstr(lvnEnv, dest, type)
-    }
-}
-
-fun InstrValue.toInstr(
-    lvnEnv: LvnEnv,
-    dest: String?,
-    type: BrilType?,
-    swaps: Map<String, String>,
-): BrilInstr = this.instr.renameVars(swaps)
-
-fun SumValueSingle.toInstr(
-    lvnEnv: LvnEnv,
-    dest: String?,
-    type: BrilType?,
-): BrilInstr = BrilAddOp(
-    op = "add",
-    argL = lvnEnv.get(l)!!,
-    argR = r,
-    dest = dest,
-    type = type,
-)
-
-fun SumValueDouble.toInstr(
-    lvnEnv: LvnEnv,
-    dest: String?,
-    type: BrilType?,
-): BrilInstr = BrilAddOp(
-    op = "add",
-    argL = lvnEnv.get(l)!!,
-    argR = lvnEnv.get(r)!!,
-    dest = dest,
-    type = type,
-)
-
 
 fun lvn(
     function: BrilFunction,
