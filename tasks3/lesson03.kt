@@ -177,18 +177,18 @@ fun lvn(
 ): BrilFunction {
     val blocks = blocks(function)
     val nblocks = blocks.map { b -> 
-        var prev: Block? = null
-        var curr = b
-        while (curr != prev) {
-            prev = curr
-            curr = lvn(curr)
-        }
-        curr
+        lvn(b)
     }
 
     return function.copy(
         instrs = nblocks.flatten()
     )
+}
+
+fun dce(
+    function: BrilFunction,
+): BrilFunction {
+    return function
 }
 
 @kotlin.ExperimentalStdlibApi
@@ -215,6 +215,16 @@ fun main(args: Array<String>) {
     val program = adapter.fromJson(source)
 
     if (program != null) {
+        var prev: BrilProgram? = null
+        var curr: BrilProgram = program
+        while (prev != curr) {
+            prev = curr
+            curr = curr.copy(
+                functions = curr.functions.map { brilfunction ->
+                    lvn(dce(brilfunction))
+                }
+            )
+        }
         val nprogram = program.copy(
             functions = program.functions.map(::lvn),
         )
