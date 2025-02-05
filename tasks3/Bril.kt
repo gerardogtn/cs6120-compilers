@@ -749,3 +749,13 @@ data class BrilPos(
     val row: Int,
     val col: Int,
 )
+
+fun BrilInstr.args(): List<String> {
+    return when (this) {
+        is BrilLabel -> emptyList()
+        is BrilOp -> {
+            val adapter = BrilOpAdapter()
+            adapter.toJson(this).args.orEmpty()
+        }
+    }
+}

@@ -186,9 +186,33 @@ fun lvn(
 }
 
 fun dce(
+    instrs: List<BrilInstr>
+): List<BrilInstr> {
+    if (instrs.isEmpty()) {
+        return instrs
+    }
+    val seen = TreeSet<String>()
+    instrs.forEach { instr -> 
+        seen.addAll(instr.args())
+    }
+    return instrs.mapNotNull { instr -> 
+        val dest = instr.dest()
+        if (dest == null) {
+            instr
+        } else if (!seen.contains(dest)) {
+            null
+        } else {
+            instr
+        }
+    }
+}
+
+fun dce(
     function: BrilFunction,
 ): BrilFunction {
-    return function
+    return function.copy(
+        instrs = dce(function.instrs)
+    )
 }
 
 @kotlin.ExperimentalStdlibApi
@@ -225,10 +249,7 @@ fun main(args: Array<String>) {
                 }
             )
         }
-        val nprogram = program.copy(
-            functions = program.functions.map(::lvn),
-        )
-        val json = adapter.toJson(nprogram)
+        val json = adapter.toJson(curr)
         println(json)
     }
 }
