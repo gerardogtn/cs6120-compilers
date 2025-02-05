@@ -849,9 +849,10 @@ fun cfg(
     return result
 }
 
-sealed interface LocalValue 
+sealed interface LocalValue
 
-data class LocalSumValue(
+data class LocalBinOp(
+    val op: String,
     val l: Int,
     val r: Int,
 ): LocalValue
@@ -874,9 +875,10 @@ fun BrilInstr.toLocalValue(
     val2p: Map<LocalValue, Int>,
 ): LocalValue? {
     return when (this) {
-        is BrilAddOp -> this.toLocalValue(var2p, val2p)
         is BrilConstOp -> LocalConstValue(this.value)
         is BrilIdOp -> this.toLocalValue(var2p)
+        is BrilAddOp -> this.toLocalValue(var2p, val2p)
+        is BrilMulOp -> this.toLocalValue(var2p, val2p)
         else -> null
     }
 }
@@ -900,7 +902,32 @@ fun BrilAddOp.toLocalValue(
     if (!var2p.contains(this.argR)) {
         return null;
     }
-    val value = LocalSumValue(
+    val value = LocalBinOp(
+        op = this.op,
+        l = var2p.get(this.argL)!!,
+        r = var2p.get(this.argR)!!,
+    )
+    return if (val2p.contains(value)) {
+        LocalIdValue(
+            pos = val2p.get(value)!!
+        )
+    } else {
+        value
+    }
+}
+
+fun BrilMulOp.toLocalValue(
+    var2p: LvnContext,
+    val2p: Map<LocalValue, Int>,
+): LocalValue? {
+    if (!var2p.contains(this.argL)) {
+        return null;
+    }
+    if (!var2p.contains(this.argR)) {
+        return null;
+    }
+    val value = LocalBinOp(
+        op = this.op,
         l = var2p.get(this.argL)!!,
         r = var2p.get(this.argR)!!,
     )
@@ -929,8 +956,12 @@ fun lvn(
             p2val.put(i, localValue)
             val2p.put(localValue, i)
             instr.dest()?.let { varname ->
+                if (localValue is LocalIdValue) {
+                    var2p.put(varname, localValue.pos)
+                } else {
+                    var2p.put(varname, i)
+                }
                 p2var.put(i, varname)
-                var2p.put(varname, i)
             }
         }
     }
@@ -959,8 +990,8 @@ fun LocalValue.toInstr(
             type = instr.type()!!,
             arg = p2var.get(localValue.pos)!!
         )
-        is LocalSumValue -> BrilAddOp(
-            op = "add", 
+        is LocalBinOp -> BrilAddOp(
+            op = this.op, 
             dest = instr.dest()!!, 
             type = instr.type()!!,
             argL = p2var.get(localValue.l)!!,
