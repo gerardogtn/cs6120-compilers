@@ -161,6 +161,14 @@ data class BrilLabel(
 
 sealed interface BrilPrimitiveValueType
 
+fun BrilPrimitiveValueType.asInt(): Int? {
+    return if (this is BrilPrimitiveValueInt) {
+        this.value
+    } else {
+        null
+    }
+}
+
 class BrilPrimitiveValueTypeAdapter {
 
     @FromJson
