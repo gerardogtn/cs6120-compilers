@@ -174,9 +174,16 @@ fun BrilAddOp.toLocalValue(
             )
         )
     }
+
+
+    val (l, r) = if (argRPos < argLPos) {
+        argRPos to argLPos
+    } else {
+        argLPos to argRPos
+    }
     val value = LocalAddOp(
-        l = argLPos,
-        r = argRPos,
+        l = l,
+        r = r,
         dest = this.dest,
         type = this.type,
     )
