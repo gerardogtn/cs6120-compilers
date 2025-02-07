@@ -94,6 +94,26 @@ data class LocalGtOp(
     val type: BrilType?,
 ): LocalValue
 
+data class LocalAndOp(
+    val l: Int,
+    val r: Int,
+    val dest: String?,
+    val type: BrilType?,
+): LocalValue
+
+data class LocalOrOp(
+    val l: Int,
+    val r: Int,
+    val dest: String?,
+    val type: BrilType?,
+): LocalValue
+
+data class LocalNotOp(
+    val arg: Int,
+    val dest: String?,
+    val type: BrilType?,
+): LocalValue
+
 typealias Lvn = TreeMap<Int, LocalValue>
 typealias LvnContext = TreeMap<String, Int>
 typealias LvnEnv = TreeMap<Int, String>
@@ -116,6 +136,9 @@ fun BrilInstr.toLocalValue(
         is BrilGeOp -> this.toLocalValue(var2p, val2p, p2val)
         is BrilLtOp -> this.toLocalValue(var2p, val2p, p2val)
         is BrilGtOp -> this.toLocalValue(var2p, val2p, p2val)
+        is BrilAndOp -> this.toLocalValue(var2p, val2p, p2val)
+        is BrilOrOp -> this.toLocalValue(var2p, val2p, p2val)
+        is BrilNotOp -> this.toLocalValue(var2p, val2p, p2val)
         else -> null
     }
 }
@@ -474,6 +497,117 @@ fun BrilGtOp.toLocalValue(
     }
 }
 
+
+fun BrilAndOp.toLocalValue(
+    var2p: LvnContext,
+    val2p: Map<LocalValue, Int>,
+    p2val: Map<Int, LocalValue>,
+): LocalValue? {
+    if (!var2p.contains(this.argL)) {
+        return null;
+    }
+    if (!var2p.contains(this.argR)) {
+        return null;
+    }
+    val argLPos = var2p.get(this.argL)!!
+    val argRPos = var2p.get(this.argR)!!
+
+    val lval: LocalValue? = p2val.get(argLPos)
+    val rval: LocalValue? = p2val.get(argRPos)
+    if (lval is LocalConstValue && rval is LocalConstValue) {
+        return LocalConstValue(
+            literal = BrilPrimitiveValueBool(
+                lval.literal.asBool()!! && rval.literal.asBool()!!
+            )
+        )
+    }
+    val value = LocalAndOp(
+        l = argLPos,
+        r = argRPos,
+        dest = this.dest,
+        type = this.type,
+    )
+    return if (val2p.contains(value)) {
+        LocalIdValue(
+            pos = val2p.get(value)!!
+        )
+    } else {
+        value
+    }
+}
+
+
+fun BrilOrOp.toLocalValue(
+    var2p: LvnContext,
+    val2p: Map<LocalValue, Int>,
+    p2val: Map<Int, LocalValue>,
+): LocalValue? {
+    if (!var2p.contains(this.argL)) {
+        return null;
+    }
+    if (!var2p.contains(this.argR)) {
+        return null;
+    }
+    val argLPos = var2p.get(this.argL)!!
+    val argRPos = var2p.get(this.argR)!!
+
+    val lval: LocalValue? = p2val.get(argLPos)
+    val rval: LocalValue? = p2val.get(argRPos)
+    if (lval is LocalConstValue && rval is LocalConstValue) {
+        return LocalConstValue(
+            literal = BrilPrimitiveValueBool(
+                lval.literal.asBool()!! || rval.literal.asBool()!!
+            )
+        )
+    }
+    val value = LocalOrOp(
+        l = argLPos,
+        r = argRPos,
+        dest = this.dest,
+        type = this.type,
+    )
+    return if (val2p.contains(value)) {
+        LocalIdValue(
+            pos = val2p.get(value)!!
+        )
+    } else {
+        value
+    }
+}
+
+
+fun BrilNotOp.toLocalValue(
+    var2p: LvnContext,
+    val2p: Map<LocalValue, Int>,
+    p2val: Map<Int, LocalValue>,
+): LocalValue? {
+    if (!var2p.contains(this.arg)) {
+        return null;
+    }
+    val argPos = var2p.get(this.arg)!!
+    val lval: LocalValue? = p2val.get(argPos)
+
+    if (lval is LocalConstValue) {
+        return LocalConstValue(
+            literal = BrilPrimitiveValueBool(
+                !lval.literal.asBool()!!
+            )
+        )
+    }
+    val value = LocalNotOp(
+        arg = argPos,
+        dest = this.dest,
+        type = this.type,
+    )
+    return if (val2p.contains(value)) {
+        LocalIdValue(
+            pos = val2p.get(value)!!
+        )
+    } else {
+        value
+    }
+}
+
 fun lvn(
     block: Block
 ) : Block {
@@ -504,6 +638,17 @@ fun lvn(
     block.forEachIndexed { i, instr -> 
         val instr = if (!p2val.contains(i)) {
             if (instr is BrilPrintOp) {
+                instr.copy(
+                    args = instr.args?.map {
+                        val p = var2p.get(it)
+                        if (p != null) {
+                            p2var.get(p)!!
+                        } else {
+                            it
+                        }
+                    }
+                )
+            } else if (instr is BrilCallOp) {
                 instr.copy(
                     args = instr.args?.map {
                         val p = var2p.get(it)
@@ -606,6 +751,26 @@ fun LocalValue.toInstr(
             type = instr.type()!!,
             argL = p2var.get(localValue.l)!!,
             argR = p2var.get(localValue.r)!!,
+        )
+        is LocalAndOp -> BrilAndOp(
+            op = "and", 
+            dest = instr.dest()!!, 
+            type = instr.type()!!,
+            argL = p2var.get(localValue.l)!!,
+            argR = p2var.get(localValue.r)!!,
+        )
+        is LocalOrOp -> BrilOrOp(
+            op = "or", 
+            dest = instr.dest()!!, 
+            type = instr.type()!!,
+            argL = p2var.get(localValue.l)!!,
+            argR = p2var.get(localValue.r)!!,
+        )
+        is LocalNotOp -> BrilNotOp(
+            op = "not", 
+            dest = instr.dest()!!, 
+            type = instr.type()!!,
+            arg = p2var.get(localValue.arg)!!,
         )
     }
 }
