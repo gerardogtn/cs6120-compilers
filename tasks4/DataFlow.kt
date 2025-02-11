@@ -10,7 +10,6 @@ import okio.buffer
 import okio.source
 import okio.Okio
  
-
 @kotlin.ExperimentalStdlibApi
 fun parseFile(
     filename: String,
@@ -23,6 +22,8 @@ fun parseFile(
 }
 
 sealed class DataflowStrategy {
+    
+    abstract val start: TreeSet<String>
     fun merge(
         sets: Collection<TreeSet<String>>
     ): TreeSet<String> {
@@ -33,7 +34,7 @@ sealed class DataflowStrategy {
        }
     }
 
-    fun transfer(
+    open fun transfer(
         block: Block,
         inb: TreeSet<String>,
     ): TreeSet<String> {
@@ -42,41 +43,73 @@ sealed class DataflowStrategy {
 
     fun pick(
         worklist: LinkedList<Int>,
-    ): Int {
-        return worklist.first()
+    ): Pair<Int, LinkedList<Int>> {
+        return worklist.first() to LinkedList(worklist.drop(1))
     }
 }
 
-class SimpleStrategy : DataflowStrategy()
 
+class SimpleStrategy(
+    override val start: TreeSet<String> = TreeSet(),
+): DataflowStrategy() {
+
+    override fun transfer(
+        block: Block,
+        inb: TreeSet<String>,
+    ): TreeSet<String> {
+        val defined = block.mapNotNull { it.dest() }.let { TreeSet<String>(it) }
+        return TreeSet(defined.plus(inb.minus(defined)))
+    }
+
+}
 data class DataflowResult(
-    val inm: Map<Int, Set<String>>,
-    val outm: Map<Int, Set<String>>,
+    val blocks: Blocks,
+    //val b2l: Map<Int, String>,
+    val inm: TreeMap<Int, TreeSet<String>>,
+    val outm: TreeMap<Int, TreeSet<String>>,
+)
+
+data class DataflowJson(
+    val id: Int,
+    val label: String,
+    val inb: Set<String>,
+    val outb: Set<String>,
 )
 
 fun dataflow(
     strategy: DataflowStrategy,
     function: BrilFunction,
-    c: TreeSet<String> = TreeSet<String>(),
 ): DataflowResult {
-    fun predecessors(bid: Int): TreeSet<Int> = TODO()
-    fun successors(bid: Int): TreeSet<Int> = TODO()
+    val (blocks, cfg: Cfg) = cfg(function)
+    fun predecessors(bid: Int): TreeSet<Int> {
+        val res = TreeSet<Int>()
+        cfg.forEach { (b, n) -> 
+            if (b != bid && n.contains(bid)) {
+                res.add(b)
+            }
+        }
+        return res
+    }
+    fun successors(bid: Int): TreeSet<Int> = cfg[bid]!!
 
     // data structures.
-    val n = 0 // TODO
+    val n = cfg.size
     val inm = TreeMap<Int, TreeSet<String>>()
     val outm = TreeMap<Int, TreeSet<String>>()
 
     // initialization.
-    // inm[entry] = c todo: 
+    val entry = 0
+    inm[entry] = strategy.start 
     for (i in 0 .. n) {
-        outm[i] = c
+        outm[i] = strategy.start
     }
 
-    val worklist = LinkedList<Int>() // TODO: Add items to the worklist.
+    var worklist = LinkedList<Int>()
+    cfg.forEach { (bid, _) -> worklist.add(bid) }
     while (worklist.isNotEmpty()) {
-        val bid: Int = strategy.pick(worklist)
-        val b: Block = TODO()
+        val (bid, next) = strategy.pick(worklist)
+        worklist = next
+        val b: Block = blocks[bid]!!
         inm[bid] = predecessors(bid).map { outm[it]!! }.let {
             strategy.merge(it)
         }
@@ -87,13 +120,17 @@ fun dataflow(
         }
     }
 
-    return DataflowResult(inm, outm)
+    return DataflowResult(
+        blocks = blocks,
+        inm = inm, 
+        outm = outm,
+    )
 }
 
 
 @kotlin.ExperimentalStdlibApi
 fun main(args: Array<String>) {
-    println("Lesson 4 - Data Flow")
+    //println("Lesson 4 - Data Flow")
     val moshi = Moshi.Builder()
         .add(BrilPrimitiveValueTypeAdapter())
         .add(BrilTypeAdapter())
@@ -120,8 +157,16 @@ fun main(args: Array<String>) {
 
     val strategy = SimpleStrategy()
     val result = dataflow(strategy, program.functions!!.first())
-    val resultAdapter: JsonAdapter<DataflowResult> = moshi.adapter<DataflowResult>()
-    val json = resultAdapter.toJson(result)
-    println(json)
-
+    
+    val dfjs = result.blocks.mapIndexed { i, b ->
+        DataflowJson(
+            id = i,
+            label = "$i",
+            inb = result.inm[i]!!,
+            outb = result.outm[i]!!,
+        )
+    }
+    val dfjsonAdapter: JsonAdapter<List<DataflowJson>> = moshi.adapter<List<DataflowJson>>()
+    val jsonstring = dfjsonAdapter.toJson(dfjs)
+    println(jsonstring)
 }

@@ -58,7 +58,17 @@ fun labelToBlock(
 }
 
 typealias Cfg = TreeMap<Int, TreeSet<Int>>
+typealias Blocks = List<Block>
 
+fun cfg(
+    function: BrilFunction,
+): Pair<Blocks, Cfg> {
+    val blocks = blocks(function)
+    return blocks to cfg(
+        blocks,
+        labelToBlock(blocks),
+    )
+}
 fun cfg(
     blocks: List<Block>,
     labelToBlock: TreeMap<String, Int>,
