@@ -34,12 +34,10 @@ sealed class DataflowStrategy {
        }
     }
 
-    open fun transfer(
+    abstract fun transfer(
         block: Block,
         inb: TreeSet<String>,
-    ): TreeSet<String> {
-        return inb;
-    }
+    ): TreeSet<String>
 
     fun pick(
         worklist: LinkedList<Int>,
@@ -48,8 +46,7 @@ sealed class DataflowStrategy {
     }
 }
 
-
-class SimpleStrategy(
+class ReachableDefinitionsStrategy(
     override val start: TreeSet<String> = TreeSet(),
 ): DataflowStrategy() {
 
@@ -60,8 +57,8 @@ class SimpleStrategy(
         val defined = block.mapNotNull { it.dest() }.let { TreeSet<String>(it) }
         return TreeSet(defined.plus(inb.minus(defined)))
     }
-
 }
+
 data class DataflowResult(
     val blocks: Blocks,
     //val b2l: Map<Int, String>,
@@ -155,7 +152,7 @@ fun main(args: Array<String>) {
         return 
     }
 
-    val strategy = SimpleStrategy()
+    val strategy = ReachableDefinitionsStrategy()
     val result = dataflow(strategy, program.functions!!.first())
     
     val dfjs = result.blocks.mapIndexed { i, b ->
