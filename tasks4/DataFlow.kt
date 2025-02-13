@@ -41,6 +41,10 @@ data class DataflowStrategy(
             sets.forEach { s -> out.addAll(s) }
                 out
         }
+        val BigIntersection = { sets: Collection<TreeSet<String>> ->
+            sets.reduceOrNull { acc, s -> acc.filter { s.contains(it) }.let { TreeSet(it)  }}
+                ?: TreeSet<String>()
+        }
     } 
 }
 
@@ -85,11 +89,18 @@ fun dataflow(
 
     // data structures.
     val n = cfg.size
+    val (preds, succs, entry) = when (strategy.direction) {
+        DataflowStrategy.Direction.FORWARDS -> {
+            Triple(predecessors, successors, 0)
+        } 
+        DataflowStrategy.Direction.BACKWARDS -> {
+            Triple(successors, predecessors, n - 1)
+        }
+    }
     val inm = TreeMap<Int, TreeSet<String>>()
     val outm = TreeMap<Int, TreeSet<String>>()
 
     // initialization.
-    val entry = 0
     inm[entry] = strategy.start
     for (i in 0 .. n) {
         outm[i] = strategy.start
