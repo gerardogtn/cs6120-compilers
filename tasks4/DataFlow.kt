@@ -21,47 +21,41 @@ fun parseFile(
     }
 }
 
-sealed class DataflowStrategy {
-    
-    abstract val start: TreeSet<String>
-    fun merge(
-        sets: Collection<TreeSet<String>>
-    ): TreeSet<String> {
-       // union
-       return sets.fold(TreeSet<String>()) { s, acc -> 
-            acc.addAll(s)
-            acc
-       }
-    }
-
-    abstract fun transfer(
-        block: Block,
-        inb: TreeSet<String>,
-    ): TreeSet<String>
-
-    fun pick(
-        worklist: LinkedList<Int>,
-    ): Pair<Int, LinkedList<Int>> {
-        return worklist.first() to LinkedList(worklist.drop(1))
-    }
+data class DataflowStrategy(
+    val merge: (Collection<TreeSet<String>>) -> TreeSet<String>,
+    val transfer: (Block) -> (TreeSet<String>) -> TreeSet<String>,
+    val direction: Direction,
+    val start: TreeSet<String>,
+    val pick: (TreeSet<Int>) -> Pair<Int, TreeSet<Int>> = { workset ->
+        if (direction == Direction.FORWARDS) {
+            workset.pollFirst() to workset
+        } else {
+            workset.pollLast() to workset
+        }
+    },
+) {
+    enum class Direction { FORWARDS, BACKWARDS }
+    object Merge {
+        val BigUnion = { sets: Collection<TreeSet<String>> ->
+            val out = TreeSet<String>()
+            sets.forEach { s -> out.addAll(s) }
+                out
+        }
+    } 
 }
 
-class ReachableDefinitionsStrategy(
-    override val start: TreeSet<String> = TreeSet(),
-): DataflowStrategy() {
-
-    override fun transfer(
-        block: Block,
-        inb: TreeSet<String>,
-    ): TreeSet<String> {
+fun reachableDefinitions(function: BrilFunction) = DataflowStrategy(
+    merge = DataflowStrategy.Merge.BigUnion,
+    transfer = { block -> { inb -> 
         val defined = block.mapNotNull { it.dest() }.let { TreeSet<String>(it) }
-        return TreeSet(defined.plus(inb.minus(defined)))
-    }
-}
+        TreeSet(defined.plus(inb))
+    }},
+    direction = DataflowStrategy.Direction.FORWARDS,
+    start = function.args?.mapNotNull { it.name }.orEmpty().let { TreeSet<String>(it) }
+)
 
 data class DataflowResult(
     val blocks: Blocks,
-    //val b2l: Map<Int, String>,
     val inm: TreeMap<Int, TreeSet<String>>,
     val outm: TreeMap<Int, TreeSet<String>>,
 )
@@ -78,16 +72,16 @@ fun dataflow(
     function: BrilFunction,
 ): DataflowResult {
     val (blocks, cfg: Cfg) = cfg(function)
-    fun predecessors(bid: Int): TreeSet<Int> {
+    val predecessors: (Int) -> TreeSet<Int> = { bid ->
         val res = TreeSet<Int>()
         cfg.forEach { (b, n) -> 
             if (b != bid && n.contains(bid)) {
                 res.add(b)
             }
         }
-        return res
+        res
     }
-    fun successors(bid: Int): TreeSet<Int> = cfg[bid]!!
+    val successors: (Int) -> TreeSet<Int> = { bid -> cfg[bid]!! }
 
     // data structures.
     val n = cfg.size
@@ -96,12 +90,12 @@ fun dataflow(
 
     // initialization.
     val entry = 0
-    inm[entry] = strategy.start 
+    inm[entry] = strategy.start
     for (i in 0 .. n) {
         outm[i] = strategy.start
     }
 
-    var worklist = LinkedList<Int>()
+    var worklist = TreeSet<Int>()
     cfg.forEach { (bid, _) -> worklist.add(bid) }
     while (worklist.isNotEmpty()) {
         val (bid, next) = strategy.pick(worklist)
@@ -111,7 +105,7 @@ fun dataflow(
             strategy.merge(it)
         }
         val prev = outm[bid]!!
-        outm[bid] = strategy.transfer(b, inm[bid]!!)
+        outm[bid] = strategy.transfer(b)(inm[bid]!!)
         if (prev != outm[bid]) {
             worklist.addAll(successors(bid))
         }
@@ -152,7 +146,7 @@ fun main(args: Array<String>) {
         return 
     }
 
-    val strategy = ReachableDefinitionsStrategy()
+    val strategy = reachableDefinitions(program.functions!!.first())
     val result = dataflow(strategy, program.functions!!.first())
     
     val dfjs = result.blocks.mapIndexed { i, b ->
