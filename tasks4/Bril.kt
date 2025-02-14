@@ -177,6 +177,14 @@ fun BrilPrimitiveValueType.asBool(): Boolean? {
     }
 }
 
+fun BrilPrimitiveValueType.asString(): String {
+    return when (this) {
+        is BrilPrimitiveValueBool -> this.value.toString()
+        is BrilPrimitiveValueInt -> this.value.toString()
+        is BrilPrimitiveValueDouble -> this.value.toString()
+    }
+}
+
 class BrilPrimitiveValueTypeAdapter {
 
     @FromJson

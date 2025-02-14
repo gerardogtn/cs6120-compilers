@@ -21,11 +21,11 @@ fun parseFile(
     }
 }
 
-data class DataflowStrategy(
-    val merge: (Collection<TreeSet<String>>) -> TreeSet<String>,
-    val transfer: (Block) -> (TreeSet<String>) -> TreeSet<String>,
+data class DataflowStrategy<T>(
+    val merge: (Collection<T>) -> T,
+    val transfer: (Block) -> (T) -> T,
     val direction: Direction,
-    val start: TreeSet<String>,
+    val start: T,
     val pick: (TreeSet<Int>) -> Pair<Int, TreeSet<Int>> = { workset ->
         if (direction == Direction.FORWARDS) {
             workset.pollFirst() to workset
@@ -35,22 +35,52 @@ data class DataflowStrategy(
     },
 ) {
     enum class Direction { FORWARDS, BACKWARDS }
-    object Merge {
-        val BigUnion = { sets: Collection<TreeSet<String>> ->
-            val out = TreeSet<String>()
-            sets.forEach { s -> out.addAll(s) }
-                out
-        }
-        val BigIntersection = { sets: Collection<TreeSet<String>> ->
-            sets.reduceOrNull { acc, s -> acc.filter { s.contains(it) }.let { TreeSet(it)  }}
-                ?: TreeSet<String>()
-        }
-    } 
 }
 
+inline fun <reified T> bigUnion(
+    sets: Collection<TreeSet<T>>,
+): TreeSet<T> {
+    val out = TreeSet<T>()
+    sets.forEach { s -> out.addAll(s) }
+    return out
+}
+
+inline fun <reified T> bigIntersection(
+    sets: Collection<TreeSet<T>>,
+): TreeSet<T> {
+    return sets.reduceOrNull { acc, s -> acc.filter { s.contains(it) }.let { TreeSet(it)  }}
+        ?: TreeSet<T>()
+} 
+
+inline fun <reified T, reified V> combine(
+    l: TreeMap<T, Option<V>>,
+    r: TreeMap<T, Option<V>>,
+): TreeMap<T, Option<V>> {
+    val map = TreeMap<T, Pair<Option<V>, Option<V>>>()
+    l.descendingKeySet().plus(r.descendingKeySet()).forEach { s ->
+        map.put(s, (l.get(s) ?: None) to (r.get(s) ?: None))
+    }
+
+    val res = TreeMap<T, Option<V>>()
+    map.forEach { s, (l, r) -> 
+        if (l is Some && r is Some && l.value == r.value) {
+            res.put(s, l)
+        } else {
+            res.put(s, None)
+        }
+    }
+    return res
+}
+
+inline fun <reified K, reified V> bigIntersection(
+    maps: Collection<TreeMap<K, Option<V>>>,
+): TreeMap<K, Option<V>> {
+    return maps.reduceOrNull{ a, s -> combine(a, s) }  ?: TreeMap<K, Option<V>>()
+} 
+
 fun reachableDefinitions(function: BrilFunction) = DataflowStrategy(
-    merge = DataflowStrategy.Merge.BigUnion,
-    transfer = { block -> { inb -> 
+    merge = ::bigUnion,
+    transfer = { block -> { inb: TreeSet<String> -> 
         val defined = block.mapNotNull { it.dest() }.let { TreeSet<String>(it) }
         TreeSet(defined.plus(inb))
     }},
@@ -58,11 +88,60 @@ fun reachableDefinitions(function: BrilFunction) = DataflowStrategy(
     start = function.args?.mapNotNull { it.name }.orEmpty().let { TreeSet<String>(it) }
 )
 
-data class DataflowResult(
-    val blocks: Blocks,
-    val inm: TreeMap<Int, TreeSet<String>>,
-    val outm: TreeMap<Int, TreeSet<String>>,
+sealed interface Option<out T>
+data class Some<out T>(val value: T): Option<T>
+data object None : Option<Nothing>
+
+typealias Cp = TreeMap<String, Option<String>>
+fun constantPropagation(
+    function: BrilFunction,
+) = DataflowStrategy(
+    merge = ::bigIntersection,
+    transfer = { block -> { inb -> 
+        val res = Cp()
+        val consts = Cp()
+        res.putAll(inb)
+        block.forEach { instr -> 
+            if (instr is BrilConstOp && instr.dest != null) {
+               consts.put(instr.dest, Some(instr.value.toString()))
+            }
+        }
+
+        consts.forEach { k, v ->
+            res.put(k, v)
+        }
+        res
+    }},
+    direction = DataflowStrategy.Direction.FORWARDS,
+    start = Cp(),
 )
+
+
+data class DataflowResult<T>(
+    val blocks: Blocks,
+    val inm: TreeMap<Int, T>,
+    val outm: TreeMap<Int, T>,
+)
+
+inline fun <reified T> DataflowResult<T>.formatted(
+    id: Int,
+    label: String,
+): DataflowJson {
+    return DataflowJson(
+        id = id,
+        label = label,
+        inb = this.inm[id]!!.let { t -> 
+            val set = TreeSet<String>()
+            set.add("$t")
+            set
+        },
+        outb = this.outm[id]!!.let { t ->
+            val set = TreeSet<String>()
+            set.add("$t")
+            set
+        }
+    )
+}
 
 data class DataflowJson(
     val id: Int,
@@ -71,10 +150,10 @@ data class DataflowJson(
     val outb: Set<String>,
 )
 
-fun dataflow(
-    strategy: DataflowStrategy,
+inline fun <reified T> dataflow(
+    strategy: DataflowStrategy<T>,
     function: BrilFunction,
-): DataflowResult {
+): DataflowResult<T> {
     val (blocks, cfg: Cfg) = cfg(function)
     val predecessors: (Int) -> TreeSet<Int> = { bid ->
         val res = TreeSet<Int>()
@@ -97,8 +176,8 @@ fun dataflow(
             Triple(successors, predecessors, n - 1)
         }
     }
-    val inm = TreeMap<Int, TreeSet<String>>()
-    val outm = TreeMap<Int, TreeSet<String>>()
+    val inm = TreeMap<Int, T>()
+    val outm = TreeMap<Int, T>()
 
     // initialization.
     inm[entry] = strategy.start
@@ -122,13 +201,20 @@ fun dataflow(
         }
     }
 
-    return DataflowResult(
+    return DataflowResult<T>(
         blocks = blocks,
         inm = inm, 
         outm = outm,
     )
 }
 
+fun <K, V, Z> TreeMap<K, V>.mfold(z: Z, f: (Z, K, V) -> Z): Z {
+    var result = z
+    this.forEach { (k, v) -> 
+        result = f(result, k, v)
+    }
+    return result
+}
 
 @kotlin.ExperimentalStdlibApi
 fun main(args: Array<String>) {
@@ -157,16 +243,11 @@ fun main(args: Array<String>) {
         return 
     }
 
-    val strategy = reachableDefinitions(program.functions!!.first())
+    val strategy = constantPropagation(program.functions!!.first())
     val result = dataflow(strategy, program.functions!!.first())
     
     val dfjs = result.blocks.mapIndexed { i, b ->
-        DataflowJson(
-            id = i,
-            label = "$i",
-            inb = result.inm[i]!!,
-            outb = result.outm[i]!!,
-        )
+        result.formatted(i, "$i")
     }
     val dfjsonAdapter: JsonAdapter<List<DataflowJson>> = moshi.adapter<List<DataflowJson>>()
     val jsonstring = dfjsonAdapter.toJson(dfjs)
