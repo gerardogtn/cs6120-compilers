@@ -50,37 +50,39 @@ fun predecessors(
     }
     return result
 }
- 
+
+typealias Doms = TreeMap<Int, TreeSet<Int>>
 fun doms(
     blocks: List<Block>,
     cfg: Cfg,
-): TreeMap<Int, TreeSet<Int>> {
+): Doms {
     fun bigcap(c: Collection<TreeSet<Int>>): TreeSet<Int> {
-        val res = TreeSet<Int>()
-        for (s in c) {
-            res.addAll(s)
+        return c.reduceOrNull { acc, s ->
+            acc.filter { s.contains(it) }.let { TreeSet(it) }
         }
-        return res
+        ?: TreeSet<Int>()
     }
     var res = TreeMap<Int, TreeSet<Int>>()
     // Starting point, all blocks are dominated by all others.
     blocks.forEachIndexed { i, b -> 
         val all = TreeSet<Int>()
-        for(i in 0..blocks.size) {
+        for(i in 0..<blocks.size) {
             all.add(i)
         }
         res.put(i, all)
     }
     res.put(0, TreeSet<Int>().also { it.add(0)})
 
-    var prev: TreeMap<Int, TreeSet<Int>>? = null
+    var prev: Doms? = null
     while (prev != res) {
         prev = res
         res = TreeMap(res)
         // starting at 1 to ignore entry
-        for(i in 1..blocks.size) {
-            val preds = predecessors(i, cfg).map{ res.get(it)!! }
-            val bigcap = bigcap(preds)
+        for(i in 1..<blocks.size) {
+            println(res)
+            val preds = predecessors(i, cfg)
+            val preddoms = preds.map{ TreeSet(res.get(it)!!) }
+            val bigcap = bigcap(preddoms)
             bigcap.add(i)
             res.put(i, bigcap)
         }
@@ -88,6 +90,64 @@ fun doms(
     return res
 }
 
+data class DTree(
+    val bid: Int,
+    val children: List<DTree>
+)
+
+typealias Idoms = TreeMap<Int, TreeSet<Int>>
+fun idoms(
+    doms: Doms,
+) : Idoms {
+    val res = TreeMap<Int, Int?>()
+    for (i in 0..<doms.size) {
+        res[i] = null
+    }
+    // remove reflexive relation
+    for (i in 0 ..< doms.size) {
+        doms[i]?.remove(i)
+    }
+
+    val visited = TreeSet<Int>()
+    visited.add(0)
+    for (i in 0 ..< doms.size) {
+        for (j in 0 ..< doms.size) {
+            if (visited.contains(i)) {
+                continue
+            }
+            doms[j]!!.remove(i)
+            if (doms[j]!!.isEmpty()) {
+                visited.add(j)
+                res[i] = j
+            }
+        }
+    }
+    
+    val output = Idoms()
+    for (i in 0 ..< doms.size) {
+        output[i] = TreeSet<Int>()
+    }
+    res.forEach { a, b -> 
+        if (b != null) {
+            output[b]!!.add(a)
+        }
+    }
+
+    return output
+}
+
+fun dtree(
+    idoms: Idoms,
+    // By default we bulid the dtree of the first basic block in the function
+    start: Int = 0,
+): DTree {
+    return DTree(
+        start,
+        children = idoms[start]!!.mapNotNull { 
+            dtree(idoms, it)
+        }
+    )
+}
 @kotlin.ExperimentalStdlibApi
 fun main(args: Array<String>) {
   println("Task 5 - Dominance relations")
@@ -105,7 +165,14 @@ fun main(args: Array<String>) {
   
   val function = p.functions.first()
   val (blocks, cfg) = cfg(function)
+  println("cfg")
+  cfg.forEach { println(it) }
   val doms = doms(blocks, cfg)
+  println("doms")
   doms.forEach { println(it) }
-  println("yup")
+  println("idoms")
+  val idoms = idoms(Doms(doms))
+  idoms.forEach { println(it)}
+  val dtree = dtree(idoms)
+  println(dtree)
 }
