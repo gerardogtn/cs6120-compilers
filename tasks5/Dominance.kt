@@ -30,14 +30,6 @@ fun program(
     return adapter.fromJson(source)
 } 
 
-fun <Z> Cfg.mfold(z: Z, f: (Z, Int, TreeSet<Int>) -> Z): Z {
-    var result = z
-    this.forEach { k, v -> 
-        result = f(result, k, v)
-    }
-    return result
-}
-
 fun predecessors(
     v: Int,
     cfg: Cfg,
