@@ -1,0 +1,16 @@
+@main(
+    cond: bool
+) {
+.top:
+    v1: int = const 47; 
+    br cond .left .right;
+.left:
+    v2: int = add v1 v1;
+    jmp .exit;
+.right:
+    v3: int = mul v1 v1;
+    jmp .exit;
+.exit:
+    v4: int = phi .left v2 .right v3;
+    print v4;
+}
