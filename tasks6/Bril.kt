@@ -87,6 +87,7 @@ fun BrilInstr.dest(): String? {
         is BrilGtOp -> this.dest
         is BrilCallOp -> this.dest
         is BrilIdOp -> this.dest
+        is BrilPhiOp -> this.dest
         else -> null
     }
 }
@@ -108,6 +109,7 @@ fun BrilInstr.type(): BrilType? {
         is BrilGtOp -> this.type
         is BrilCallOp -> this.type
         is BrilIdOp -> this.type
+        is BrilPhiOp -> this.type
         else -> null
     }
 }
@@ -245,6 +247,12 @@ data class BrilOpJson(
 sealed interface BrilOp : BrilInstr {
     val op: String
 }
+data class BrilPhiOp(
+    override val op: String, 
+    val dest: String,
+    val args: List<String>,
+    val type: BrilType?
+): BrilOp
 
 data class BrilUnknownOp(
     override val op: String,
@@ -530,6 +538,12 @@ class BrilOpAdapter {
             "nop" -> BrilNopOp(
                 op = brilOpJson.op,
             )
+            "phi" -> BrilPhiOp(
+                op = brilOpJson.op,
+                dest = brilOpJson.dest!!,
+                type = brilOpJson.type,
+                args = brilOpJson.args?.mapNotNull { it }.orEmpty(),
+            )
             else -> BrilUnknownOp(
                 op = brilOpJson.op,
                 dest = brilOpJson.dest,
@@ -757,6 +771,16 @@ class BrilOpAdapter {
                 funcs = null,
                 labels = null,
                 pos = null,
+            )
+            is BrilPhiOp -> BrilOpJson(
+                op = brilOp.op,
+                dest = brilOp.dest,
+                type = brilOp.type,
+                args = brilOp.args,
+                value = null,
+                funcs = null,
+                labels = null,
+                pos = null
             )
         }
 
