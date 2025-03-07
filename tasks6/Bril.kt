@@ -251,6 +251,7 @@ data class BrilPhiOp(
     override val op: String, 
     val dest: String,
     val args: List<String>,
+    val labels: List<String>,
     val type: BrilType?
 ): BrilOp
 
@@ -543,6 +544,7 @@ class BrilOpAdapter {
                 dest = brilOpJson.dest!!,
                 type = brilOpJson.type,
                 args = brilOpJson.args?.mapNotNull { it }.orEmpty(),
+                labels = brilOpJson.labels?.mapNotNull { it }.orEmpty(), 
             )
             else -> BrilUnknownOp(
                 op = brilOpJson.op,
@@ -779,7 +781,7 @@ class BrilOpAdapter {
                 args = brilOp.args,
                 value = null,
                 funcs = null,
-                labels = null,
+                labels = brilOp.labels,
                 pos = null
             )
         }

@@ -9,7 +9,7 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 @kotlin.ExperimentalStdlibApi
 fun program(
     filename: String?,
-): BrilProgram? {
+): Pair<JsonAdapter<BrilProgram>, BrilProgram?> {
  val moshi = Moshi.Builder()
         .add(BrilPrimitiveValueTypeAdapter())
         .add(BrilTypeAdapter())
@@ -27,7 +27,7 @@ fun program(
         System.`in`.source().buffer()
     }
 
-    return adapter.fromJson(source)
+    return adapter to adapter.fromJson(source)
 } 
 
 fun predecessors(
@@ -43,20 +43,61 @@ fun predecessors(
     return result
 }
 
+fun fromSsa(
+    function: BrilFunction,
+): BrilFunction {
+    val (blocks, cfg) = cfg(function)
+    val lblToBlock = labelToBlock(blocks)
+    val blockIdMapping = blocksToIds(blocks)
+    blocks.forEachIndexed { i, b ->
+        b.forEachIndexed { j, instr ->
+            if (instr is BrilPhiOp) {
+                val listOfArgs = instr.args
+                val listOfLabels = instr.labels
+                for ((n, v) in listOfLabels.withIndex()) {
+                    val bid = lblToBlock[v!!]
+                    val newBrilID = BrilIdOp("id", instr.dest, instr.type, listOfArgs[n])
+                    blockIdMapping[bid!!]!!.add(blockIdMapping[bid!!]!!.size - 1, newBrilID)
+                }
+                blockIdMapping[i]!!.removeAt(j)
+            }
+        }    
+    }
+
+    val newInstrs = blockIdMapping.values.flatten()
+    return function.copy(
+        instrs = newInstrs,
+    )
+}
+
+fun debugToSsa(p: BrilProgram) {
+    println("STARTING")
+    val function = p.functions.first()
+    val (blocks, cfg) = cfg(function)
+    val new_fx = fromSsa(function)
+    println("NEW")
+    println(new_fx)
+  
+}
+
 @kotlin.ExperimentalStdlibApi
 fun main(args: Array<String>) {
-  println("Task 6 - Static Single Assignment")
+//   println("Task 6 - Static Single Assignment")
   val filename = if (args.size > 0 && args[0].startsWith("-f")) {
       args[1]
   } else {
       null
   }
-  val p = program(filename)
+  val (adapter, p) = program(filename)
 
   if (p == null) {
       println("Invalid input")
       return
   }
 
-  println("Tasks 6 - Done")
+  val new_prog = p.copy(functions=p.functions.map(::fromSsa))
+  val out = adapter.toJson(new_prog)
+  println(out)
+
+//   println("Tasks 6 - Done")
 }
