@@ -92,6 +92,110 @@ fun BrilInstr.dest(): String? {
     }
 }
 
+fun BrilInstr.renameDest(
+    dest: String,
+): BrilInstr {
+    return when(this) {
+        is BrilConstOp -> this.copy(dest = dest)
+        is BrilAddOp -> this.copy(dest = dest)
+        is BrilMulOp -> this.copy(dest = dest)
+        is BrilSubOp -> this.copy(dest = dest)
+        is BrilDivOp -> this.copy(dest = dest)
+        is BrilNotOp -> this.copy(dest = dest)
+        is BrilAndOp -> this.copy(dest = dest)
+        is BrilOrOp -> this.copy(dest = dest)
+        is BrilEqOp -> this.copy(dest = dest)
+        is BrilLeOp -> this.copy(dest = dest)
+        is BrilGeOp -> this.copy(dest = dest)
+        is BrilLtOp -> this.copy(dest = dest)
+        is BrilGtOp -> this.copy(dest = dest)
+        is BrilCallOp -> this.copy(dest = dest)
+        is BrilIdOp -> this.copy(dest = dest)
+        is BrilPhiOp -> this.copy(dest = dest)
+        is BrilUnknownOp -> this.copy(dest = dest)
+        else -> this
+    }
+}
+
+fun BrilInstr.replaceArgs(
+    f: (String) -> String
+): BrilInstr {
+    return when (this) {
+        is BrilAddOp -> this.copy(
+            argL = f(this.argL),
+            argR = f(this.argR),
+        )
+        is BrilMulOp -> this.copy(
+            argL = f(this.argL),
+            argR = f(this.argR),
+        )
+        is BrilSubOp -> this.copy(
+            argL = f(this.argL),
+            argR = f(this.argR),
+        )
+        is BrilDivOp -> this.copy(
+            argL = f(this.argL),
+            argR = f(this.argR),
+        )
+        is BrilNotOp -> this.copy(
+            arg = f(this.arg),
+        )
+        is BrilAndOp -> this.copy(
+            argL = f(this.argL),
+            argR = f(this.argR),
+        )
+        is BrilOrOp -> this.copy(
+            argL = f(this.argL),
+            argR = f(this.argR),
+        )
+        is BrilEqOp -> this.copy(
+            argL = f(this.argL),
+            argR = f(this.argR),
+        )
+        is BrilLeOp -> this.copy(
+            argL = f(this.argL),
+            argR = f(this.argR),
+        )
+        is BrilGeOp -> this.copy(
+            argL = f(this.argL),
+            argR = f(this.argR),
+        )
+        is BrilLtOp -> this.copy(
+            argL = f(this.argL),
+            argR = f(this.argR),
+        )
+        is BrilGtOp -> this.copy(
+            argL = f(this.argL),
+            argR = f(this.argR),
+        )
+        is BrilCallOp -> this.copy(
+            args = this.args?.map(f),
+        )
+        is BrilIdOp -> this.copy(
+            arg = f(this.arg),
+        )
+        is BrilPhiOp -> this.copy(
+            args = this.args.map(f),
+        )
+        is BrilLabel -> this
+        is BrilBrOp -> this.copy(
+            arg = f(this.arg),
+        )
+        is BrilConstOp -> this
+        is BrilJmpOp -> this
+        is BrilNopOp -> this
+        is BrilPrintOp -> this.copy(
+            args = this.args?.map(f)
+        )
+        is BrilRetOp -> this.copy(
+            arg = this.arg?.let { f(it) }
+        )
+        is BrilUnknownOp -> this.copy(
+            args = this.args?.map { f(it) }
+        )
+    }
+}
+
 fun BrilInstr.type(): BrilType? {
     return when(this) {
         is BrilConstOp -> this.type
@@ -544,7 +648,7 @@ class BrilOpAdapter {
                 dest = brilOpJson.dest!!,
                 type = brilOpJson.type,
                 args = brilOpJson.args?.mapNotNull { it }.orEmpty(),
-                labels = brilOpJson.labels?.mapNotNull { it }.orEmpty(), 
+                labels = brilOpJson.labels?.mapNotNull { it }.orEmpty(),
             )
             else -> BrilUnknownOp(
                 op = brilOpJson.op,

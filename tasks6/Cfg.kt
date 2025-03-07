@@ -42,6 +42,19 @@ fun blocksToIds(
     return result
 }
 
+fun bidToLabel(
+    blocks: List<Block>
+): TreeMap<Int, String> {
+    val result = TreeMap<Int, String>()
+    blocks.forEachIndexed { i, b -> 
+        val instr = b.firstOrNull()
+        if (instr is BrilLabel) {
+            result[i] = instr.label
+        }
+    }
+    return result
+}
+
 fun labelToBlock(
     blocks: List<Block>
 ): TreeMap<String, Int> {
