@@ -66,7 +66,7 @@ fun defs(
 }
 
 
-typealias Phis = TreeMap<Int, TreeMap<String, TreeMap<Int, String>>>
+typealias Phis = TreeMap<Int, TreeSet<String>>
 fun toSsa(
     blocks: Blocks,
     cfg: Cfg,
@@ -77,7 +77,7 @@ fun toSsa(
     val defs = defs(blocks)
     val phis: Phis = Phis()
     blocks.forEachIndexed { i, _ -> 
-        phis[i] = TreeMap()
+        phis[i] = TreeSet()
     }
     
     val processing = TreeSet<String>()
@@ -87,11 +87,9 @@ fun toSsa(
         val bs = TreeSet(defs[v]!!)
         bs.forEach { b -> 
             domFrontier[b]!!.forEach { b1 -> 
-                val c = phis[b1]!!
-                if (c.contains(v).not()) {
-                    c.put(v, TreeMap<Int, String>())
+                if (phis[b1]!!.contains(v).not()) {
+                    phis[b1]!!.add(v)
                 }
-                c[v]!!.put(b, v)
                 if (defs[v]!!.contains(b1).not()) {
                     defs[v]!!.add(b1)
                     processing.add(v)
@@ -99,27 +97,24 @@ fun toSsa(
             }
         }
     }
-    
     val blockMap = TreeMap<Int, LinkedList<BrilInstr>>()
+    // block -> varname -> index
+    val phiLocs = TreeMap<Int, TreeMap<String, Int>>()
     blocks.forEachIndexed { i, b -> 
         val label = b.first()
         val list = LinkedList<BrilInstr>()
         list.add(label)
-        phis[i]!!.forEach { (vname, args) ->
-            val phiArgs = LinkedList<String>()
-            val labels = LinkedList<String>()
-            args.forEach { bid, name ->
-                phiArgs.add(name)
-                labels.add(blockToLabel[bid]!!)
-            }
+        phiLocs[i] = TreeMap()
+        phis[i]!!.forEachIndexed { j, vname ->
             val phiOp = BrilPhiOp(
                 op = "phi",
-                args = phiArgs,
-                labels = labels,
+                args = emptyList(),
+                labels = emptyList(),
                 dest = vname,
-                type = BrilPrimitiveType("int", null), // TODO - remove hardcoding
+                type = BrilPrimitiveType("int", null), // defaults to int, on renaming the correct type will be appilied.
             )
             list.add(phiOp)
+            phiLocs[i]!!.put(vname, j + 1) 
         }
         for (i in 1 ..< b.size) {
             list.add(b[i]!!)
@@ -172,23 +167,20 @@ fun toSsa(
            }
         }
         cfg[id]!!.forEach { succ ->
-            for (i in 0 ..< blockMap[succ]!!.size) {
-                val instr = blockMap[succ]!![i]
-                if (instr is BrilPhiOp) {
-                    val argIndex = instr.labels.indexOfFirst { it == blockToLabel[id] }
-                    if (argIndex != -1) {
-                        val instr0 = instr.copy(
-                            args = instr.args.mapIndexed { j, arg -> 
-                                if (j == argIndex) {
-                                   stack[arg]!!.first() 
-                                } else {
-                                    arg
-                                }
-                            }
-                        )
-                        blockMap[succ]!![i] = instr0
-                    }
+            phiLocs[succ]!!.forEach { (target, loc) ->
+                val phiOp = blockMap[succ]!![loc] as BrilPhiOp
+                val next = if (stack[target]!!.isEmpty()) {
+                    phiOp.copy(
+                        args = phiOp.args.plus("undef"),
+                        labels = phiOp.labels.plus(blockToLabel[id]!!)
+                    )
+                } else {
+                    phiOp.copy(
+                        args = phiOp.args.plus(stack[target]!!.first()),
+                        labels = phiOp.labels.plus(blockToLabel[id]!!)
+                    )
                 }
+                blockMap[succ]!![loc] = next
             }
         }
         idoms[id]!!.forEach { next ->
@@ -200,6 +192,7 @@ fun toSsa(
         }
     }
     rename(0)
+
     val res = LinkedList<BrilInstr>()
     blockMap.forEach { (i, b) ->
         res.addAll(b)
@@ -235,29 +228,55 @@ fun fromSsa(
     )
 }
 
-fun debugToSsa(p: BrilProgram) {
+fun debugFromSsa(p: BrilProgram) {
     println("STARTING")
     val function = p.functions.first()
     val (blocks, cfg) = cfg(function)
     val new_fx = fromSsa(function)
     println("NEW")
     println(new_fx)
-  
 }
 
-@kotlin.ExperimentalStdlibApi
-fun main(args: Array<String>) {
-    val filename = if (args.size > 0 && args[0].startsWith("-f")) {
-        args[1]
-    } else {
-        null
-    }
-    val (adapter, p) = program(filename)
+fun debugToSsa(
+    p: BrilProgram,
+): BrilProgram {
+    val p1 = p.copy(
+        functions = p.functions.map { brilFun -> 
+            System.err.println("fun: ${brilFun.name}")
+            System.err.println("cfg")
+            val (blocks, cfg) = cfg(brilFun)
+            cfg.forEach { System.err.println(it) }
+            System.err.println("preds")
+            for (i in 0 ..< cfg.size) {
+                val preds = predecessors(i, cfg)
+                System.err.println("$i $preds")
+            }
+            val doms = doms(blocks, cfg)
+            System.err.println("strictly dominates")
+            val domsFlipped = flip_doms(doms, strict = true)
+            domsFlipped.forEach { System.err.println(it) }
+            System.err.println("idoms")
+            val idoms = idomsSearch(domsFlipped)
+            idoms.forEach { System.err.println(it) }
+            System.err.println("input for domfrontier")
+            val fp = flip_doms(doms, strict=true)
+            fp.forEach { System.err.println(it) }
+            System.err.println("domfrontier")
+            val domfrontier = domfrontier(doms=fp, cfg=cfg)
+            domfrontier.forEach { System.err.println(it) }
+            val bidTolabel = bidToLabel(blocks)
+            val ssa = toSsa(blocks, cfg, idoms, domfrontier, bidTolabel)
+            brilFun.copy(
+                instrs = ssa
+            )
+        }
+    )
+    return p1
+}
 
-    if (p == null) {
-        println("Invalid input")
-        return
-    }   
+fun toSsa(
+    p: BrilProgram,
+): BrilProgram {
     val p1 = p.copy(
         functions = p.functions.map { brilFun -> 
             val (blocks, cfg) = cfg(brilFun)
@@ -272,5 +291,32 @@ fun main(args: Array<String>) {
             )
         }
     )
+    return p1
+}
+
+@kotlin.ExperimentalStdlibApi
+fun main(args: Array<String>) {
+    val argSet: TreeSet<String> = TreeSet()
+    for (i in 0 ..< args.size) {
+        argSet.add(args[i]!!)
+    }
+
+    val filename = if (args.size > 0 && args[0].startsWith("-f")) {
+        args[1]
+    } else {
+        null
+    }
+    val (adapter, p) = program(filename)
+
+    if (p == null) {
+        println("Invalid input")
+        return
+    }   
+    val p1 = if (argSet.contains("--debug-to-ssa")) {
+        debugToSsa(p)
+    } else {
+        toSsa(p)
+
+    }
     println(adapter.toJson(p1))
 }

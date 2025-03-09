@@ -1,3 +1,5 @@
+# ARGS true
+# ARGS false
 @main(
     cond: bool
 ) {

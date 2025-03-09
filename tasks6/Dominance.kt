@@ -67,6 +67,8 @@ fun flip_doms(
         for (vj in ni) {
             if (strict && vi != vj) {
                 res[vj]!!.add(vi)
+            } else if (!strict) {
+                res[vj]!!.add(vi)
             }
         }
     }
@@ -206,18 +208,19 @@ fun domfrontier(
     cfg: Cfg,
 ): DomFrontier {
     val res = DomFrontier()
-    for (i in 0 ..< cfg.size) {
-        res.put(i, TreeSet())
-        for (vj in cfg[i]!!) {
-            if (vj != i && doms[i]!!.contains(vj).not()) {
-                for (vk in predecessors(i, cfg)!!) {
-                    if (vk != i && doms[vk]!!.contains(vj)) {
-                        res[i]!!.add(vj)
-                    }
+    for (vi in 0 ..< cfg.size) {
+        res.put(vi, TreeSet())
+        for (vj in 0 ..< cfg.size) {
+            if (doms[vi]!!.contains(vj)) {
+                continue
+            }
+            for (vk in predecessors(vj, cfg)) {
+                if (doms[vi]!!.contains(vk) || vi == vk) {
+                    res[vi]!!.add(vj)
+                    break
                 }
             }
         }
     }
     return res
 }
-
