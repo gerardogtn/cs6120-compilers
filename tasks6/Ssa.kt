@@ -220,9 +220,18 @@ fun fromSsa(
                 val listOfArgs = instr.args
                 val listOfLabels = instr.labels
                 for ((n, v) in listOfLabels.withIndex()) {
-                    val bid = lblToBlock[v!!]
-                    val newBrilID = BrilIdOp("id", instr.dest, instr.type, listOfArgs[n])
-                    blockIdMapping[bid!!]!!.add(blockIdMapping[bid!!]!!.size - 1, newBrilID)
+                    if (listOfArgs[n] != "undef") {
+                        val bid = lblToBlock[v!!]
+                        val newBrilID = BrilIdOp("id", instr.dest, instr.type, listOfArgs[n])
+                        val indexToInsert = if (blockIdMapping[bid!!]!!.lastOrNull()?.let { instr ->
+                            instr !is BrilJmpOp && instr !is BrilBrOp && instr !is BrilRetOp && instr !is BrilCallOp
+                        } == true) {
+                            blockIdMapping[bid!!]!!.size
+                        } else {
+                            blockIdMapping[bid!!]!!.size - 1
+                        }
+                        blockIdMapping[bid!!]!!.add(indexToInsert, newBrilID)
+                    }
                 }
             }
         }
