@@ -79,10 +79,38 @@ fun cfg(
     function: BrilFunction,
 ): Pair<Blocks, Cfg> {
     val blocks = blocks(function)
-    return blocks to cfg(
-        blocks,
-        labelToBlock(blocks),
-    )
+    val cfg = cfg(blocks, labelToBlock(blocks))
+    var preventBackEdgesToEntry = false
+    for (i in 1 ..< blocks.size) {
+        if (cfg[i]!!.contains(0)) {
+            preventBackEdgesToEntry = true
+            break
+        }
+    }
+
+    return if (preventBackEdgesToEntry) {
+        val startBlock = Block()
+        startBlock.add(
+            BrilLabel(
+                label = "dg6413",
+                pos = null,
+            )
+        )
+        startBlock.add(
+            BrilJmpOp(
+                op = "jmp",
+                label = (blocks[0][0] as BrilLabel).label,
+            )
+        )
+        (blocks as LinkedList<Block>).add(0, startBlock)
+        for (i in cfg.size - 1 downTo 0) {
+            cfg.put(i + 1, TreeSet(cfg[i]!!))
+        }
+        cfg.put(0, TreeSet<Int>().let { it.add(1); it })
+        blocks to cfg(blocks, labelToBlock(blocks))
+    } else {
+        blocks to cfg(blocks, labelToBlock(blocks))
+    }
 }
 fun cfg(
     blocks: List<Block>,
