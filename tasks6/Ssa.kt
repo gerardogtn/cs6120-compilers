@@ -224,9 +224,19 @@ fun fromSsa(
                     val newBrilID = BrilIdOp("id", instr.dest, instr.type, listOfArgs[n])
                     blockIdMapping[bid!!]!!.add(blockIdMapping[bid!!]!!.size - 1, newBrilID)
                 }
-                blockIdMapping[i]!!.removeAt(j)
             }
-        }    
+        }
+    }
+
+    for (blockId in blockIdMapping.keys.toList()) {
+        val newI = LinkedList<BrilInstr>()
+        for (instr in blockIdMapping[blockId]!!) {
+            if (instr !is BrilPhiOp) {
+                newI.add(instr)
+            }
+        }
+
+        blockIdMapping[blockId] = newI
     }
 
     val newInstrs = blockIdMapping.values.flatten()
@@ -315,6 +325,33 @@ fun toSsa(
     return p1
 }
 
+fun roundtrip(
+    p: BrilProgram,
+): BrilProgram {
+    val p1 = p.copy(
+        functions = p.functions.map { brilFun -> 
+            val (blocks, cfg) = cfg(brilFun)
+            val doms = doms(blocks, cfg)
+            val domsFlipped = flip_doms(doms)
+            val idoms = idomsSearch(domsFlipped)
+            val domfrontier = domfrontier(domsFlipped, cfg)
+            val bidTolabel = bidToLabel(blocks)
+            val ssa = toSsa(
+                args = brilFun.args.orEmpty(),
+                blocks = blocks, 
+                cfg = cfg, 
+                idoms = idoms,
+                domFrontier = domfrontier,
+                blockToLabel = bidTolabel,
+            )
+            fromSsa(brilFun.copy(
+                instrs = ssa
+            ))
+        }
+    )
+    return p1
+}
+
 @kotlin.ExperimentalStdlibApi
 fun main(args: Array<String>) {
     val argSet: TreeSet<String> = TreeSet()
@@ -333,11 +370,16 @@ fun main(args: Array<String>) {
         println("Invalid input")
         return
     }   
-    val p1 = if (argSet.contains("--debug-to-ssa")) {
-        debugToSsa(p)
+    // val p1 = if (argSet.contains("--debug-to-ssa")) {
+    //     debugToSsa(p)
+    // } else {
+    //     toSsa(p)
+    // }
+
+    val p1 = if (argSet.contains("roundtrip")) {
+        roundtrip(p)
     } else {
         toSsa(p)
-
     }
     println(adapter.toJson(p1))
 }
