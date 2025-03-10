@@ -38,7 +38,7 @@ fun predecessors(
 ): TreeSet<Int> {
     var result = TreeSet<Int>()
     cfg.forEach { v1, next -> 
-        if (v != v1 && next.contains(v)) {
+        if (next.contains(v)) {
             result.add(v1)
         }
     }
