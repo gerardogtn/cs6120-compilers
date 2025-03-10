@@ -7,4 +7,5 @@ command = "bril2json < {filename} | ./run.sh | bril2txt"
 output."ssa" = "-"
 
 [envs.compare]
-command = "bril2json < {filename} | ./run.sh | brili {args}"
+command = "bril2json < {filename} | ./run.sh |  brili {args}"
+output."works" = "-"

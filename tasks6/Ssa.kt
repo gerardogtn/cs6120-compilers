@@ -68,6 +68,7 @@ fun defs(
 
 typealias Phis = TreeMap<Int, TreeSet<String>>
 fun toSsa(
+    args: List<BrilArg>,
     blocks: Blocks,
     cfg: Cfg,
     idoms: Idoms,
@@ -126,6 +127,12 @@ fun toSsa(
     val varCount = TreeMap<String, Int>()
     defs.keys.forEach { v -> 
         stack.put(v, LinkedList<String>())
+        args.forEach { arg -> 
+            if (stack.contains(arg.name).not()) {
+                stack.put(arg.name, LinkedList<String>())
+            }
+            stack[arg.name]!!.add(arg.name)
+        }
         varCount.put(v, 0)
     }
 
@@ -265,7 +272,14 @@ fun debugToSsa(
             val domfrontier = domfrontier(doms=fp, cfg=cfg)
             domfrontier.forEach { System.err.println(it) }
             val bidTolabel = bidToLabel(blocks)
-            val ssa = toSsa(blocks, cfg, idoms, domfrontier, bidTolabel)
+            val ssa = toSsa(
+                args = brilFun.args.orEmpty(),
+                blocks = blocks, 
+                cfg = cfg, 
+                idoms = idoms,
+                domFrontier = domfrontier,
+                blockToLabel = bidTolabel,
+            )
             brilFun.copy(
                 instrs = ssa
             )
@@ -285,7 +299,14 @@ fun toSsa(
             val idoms = idomsSearch(domsFlipped)
             val domfrontier = domfrontier(domsFlipped, cfg)
             val bidTolabel = bidToLabel(blocks)
-            val ssa = toSsa(blocks, cfg, idoms, domfrontier, bidTolabel)
+            val ssa = toSsa(
+                args = brilFun.args.orEmpty(),
+                blocks = blocks, 
+                cfg = cfg, 
+                idoms = idoms,
+                domFrontier = domfrontier,
+                blockToLabel = bidTolabel,
+            )
             brilFun.copy(
                 instrs = ssa
             )
