@@ -88,6 +88,7 @@ fun BrilInstr.dest(): String? {
         is BrilCallOp -> this.dest
         is BrilIdOp -> this.dest
         is BrilPhiOp -> this.dest
+        is BrilUnknownOp -> this.dest
         else -> null
     }
 }
