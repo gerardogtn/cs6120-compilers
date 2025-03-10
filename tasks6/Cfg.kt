@@ -92,7 +92,9 @@ fun cfg(
     blocks.forEachIndexed { i, b -> 
         val edgesOut = TreeSet<Int>()
         val last = b.lastOrNull() as? BrilOp
-        if (last is BrilJmpOp) {
+        if (last is BrilRetOp) {
+            // Do not add an edge out
+        } else if (last is BrilJmpOp) {
             edgesOut.add(labelToBlock.get(last.label)!!)
         } else if (last is BrilBrOp) {
             edgesOut.add(labelToBlock.get(last.labelL)!!)
