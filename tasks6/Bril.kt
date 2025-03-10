@@ -628,7 +628,7 @@ class BrilOpAdapter {
             )
             "ret" -> BrilRetOp(
                 op = brilOpJson.op,
-                arg = brilOpJson.args?.get(0),
+                arg = brilOpJson.args?.getOrNull(0),
             )
             "id" -> BrilIdOp(
                 op = brilOpJson.op,

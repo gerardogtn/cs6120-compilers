@@ -9,3 +9,7 @@ output."ssa" = "-"
 [envs.compare]
 command = "bril2json < {filename} | ./run.sh |  brili {args}"
 output."works" = "-"
+
+[envs.compare_rt]
+command = "bril2json < {filename} | ./run.sh --roundtrip |  brili {args}"
+output."works" = "-"

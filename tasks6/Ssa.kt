@@ -214,43 +214,71 @@ fun fromSsa(
     val (blocks, cfg) = cfg(function)
     val lblToBlock = labelToBlock(blocks)
     val blockIdMapping = blocksToIds(blocks)
+    val toAdd = TreeMap<Int, LinkedList<BrilIdOp>>()
+    for (i in 0..< blocks.size) {
+        toAdd[i] = LinkedList()
+    }
     blocks.forEachIndexed { i, b ->
         b.forEachIndexed { j, instr ->
             if (instr is BrilPhiOp) {
                 val listOfArgs = instr.args
                 val listOfLabels = instr.labels
                 for ((n, v) in listOfLabels.withIndex()) {
-                    if (listOfArgs[n] != "undef") {
+                    if (listOfArgs[n] != "undef" && listOfArgs[n] != "__undefined") {
                         val bid = lblToBlock[v!!]
                         val newBrilID = BrilIdOp("id", instr.dest, instr.type, listOfArgs[n])
-                        val indexToInsert = if (blockIdMapping[bid!!]!!.lastOrNull()?.let { instr ->
-                            instr !is BrilJmpOp && instr !is BrilBrOp && instr !is BrilRetOp && instr !is BrilCallOp
-                        } == true) {
-                            blockIdMapping[bid!!]!!.size
-                        } else {
-                            blockIdMapping[bid!!]!!.size - 1
-                        }
-                        blockIdMapping[bid!!]!!.add(indexToInsert, newBrilID)
+                        toAdd[bid]!!.add(newBrilID)
+                        //val indexToInsert = if (blockIdMapping[bid!!]!!.lastOrNull()?.let { instr ->
+                            //instr !is BrilJmpOp && instr !is BrilBrOp && instr !is BrilRetOp && instr !is BrilCallOp
+                        //} == true) {
+                            //blockIdMapping[bid!!]!!.size
+                        //} else {
+                            //blockIdMapping[bid!!]!!.size - 1
+                        //}
+                        //blockIdMapping[bid!!]!!.add(indexToInsert, newBrilID)
                     }
                 }
             }
         }
     }
 
-    for (blockId in blockIdMapping.keys.toList()) {
-        val newI = LinkedList<BrilInstr>()
-        for (instr in blockIdMapping[blockId]!!) {
-            if (instr !is BrilPhiOp) {
-                newI.add(instr)
+    val newBlocks = LinkedList<Block>()
+    for (bid in 0 ..< blocks.size) {
+        val b = blocks[bid]!!
+        newBlocks.add(LinkedList())
+        for (i in 0 ..< b.size) {
+            val instr = b[i]!!
+            val isLast = i == (b.size - 1)
+            if (isLast && (instr is BrilJmpOp || instr is BrilOp || instr is BrilRetOp || instr is BrilCallOp)) {
+                toAdd[bid]!!.forEach { idOp -> 
+                    newBlocks[bid]!!.add(idOp)
+                }
+                newBlocks[bid]!!.add(instr)
+            } else if (isLast) {
+                newBlocks[bid]!!.add(instr)
+                toAdd[bid]!!.forEach { idOp -> 
+                    newBlocks[bid]!!.add(idOp)
+                }
+            } else if (instr !is BrilPhiOp) {
+                newBlocks[bid]!!.add(instr)
             }
         }
 
-        blockIdMapping[blockId] = newI
     }
 
-    val newInstrs = blockIdMapping.values.flatten()
+    val newInstrs = newBlocks.flatten()
     return function.copy(
         instrs = newInstrs,
+    )
+}
+
+fun fromSsa(
+    p: BrilProgram,
+): BrilProgram {
+    return p.copy(
+        functions = p.functions.map { brilFun -> 
+            fromSsa(brilFun)
+        }
     )
 }
 
@@ -385,8 +413,10 @@ fun main(args: Array<String>) {
     //     toSsa(p)
     // }
 
-    val p1 = if (argSet.contains("roundtrip")) {
+    val p1 = if (argSet.contains("--roundtrip")) {
         roundtrip(p)
+    } else if (argSet.contains("--from-ssa")) {
+        fromSsa(p)
     } else {
         toSsa(p)
     }
