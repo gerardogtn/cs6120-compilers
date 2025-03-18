@@ -61,27 +61,78 @@ fun reach(
     return reach
 }
 
-typealias NaturalLoops = TreeSet<LinkedList<Int>>
+data class NaturalLoop(
+    val start: Int,
+    val end: Int,
+    val middle: TreeSet<Int>,
+)
 fun naturalLoops(
     cfg: Cfg,
     backedges: BackEdges,
-): NaturalLoops {
-    val res = NaturalLoops()
+): LinkedList<NaturalLoop> {
+    val res = LinkedList<NaturalLoop>()
     backedges.forEach { (vi, n) -> 
         n.forEach { vj -> 
             val reach = reach(cfg, target=vi, skip=vj)
-            reach.add(vi)
-            reach.add(vj)
-            System.err.println(reach)
+            res.add(NaturalLoop(start = vj, end = vi, middle = reach))
         }
     }
     return res
+}
+
+typealias NextLabel= () -> String
+fun nextLabelGenerator(
+    labels: TreeSet<String>,
+): NextLabel {
+    val acc = TreeSet(labels)
+    var counter = 0
+    val prefix = "__label"
+    return { 
+        var candidate = "$prefix$counter"
+        while (candidate in acc) {
+            counter = counter + 1
+            candidate = "$prefix$counter"
+        }
+        counter = counter + 1
+        candidate
+    }
+
+}
+
+fun insertPreHeaders(
+    f: BrilFunction,
+    loops: List<NaturalLoop>,
+    nextLabel: NextLabel,
+    blocks: Blocks,
+): BrilFunction {
+    val process = TreeSet<Int>()
+    loops.forEach { (start, _, _) -> 
+        process.add(start)
+    }
+    val instrs1 = LinkedList<BrilInstr>()
+    blocks.forEachIndexed { i, block -> 
+        if (i in process) {
+            instrs1.add(
+                BrilLabel(
+                    label = nextLabel(),
+                    pos = null,
+                )
+            )
+        }
+        instrs1.addAll(block)
+    }
+    return f.copy(
+        instrs = instrs1
+    )
 }
 
 // p is a bril program in ssa form.
 fun loopOptimize(
     p: BrilProgram,
 ): BrilProgram {
+    // p1 is the ssa-program with preheaders.
+    // If you have identified that block b starts a natural loop,
+    // then you can be sure that block (b - 1) is the preheader of the loop.
     val p1 = p.copy(
         functions = p.functions.map { brilFun -> 
             val (blocks, cfg) = cfg(brilFun)
@@ -97,11 +148,16 @@ fun loopOptimize(
             System.err.println("naturalLoops")
             val naturalLoops = naturalLoops(cfg, backedges)
             naturalLoops.forEach { System.err.println(it) }
-            brilFun.copy(
-                // TODO: Change function
+            val nextLabel = nextLabelGenerator(brilFun.labels())
+            insertPreHeaders(
+                brilFun,
+                naturalLoops,
+                nextLabel,
+                blocks
             )
         }
     )
+    val p2 = toSsa(p1)
     return p1
 }
 

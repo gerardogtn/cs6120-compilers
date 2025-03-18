@@ -1,5 +1,6 @@
 import com.squareup.moshi.*
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import java.util.TreeSet
 
 // Bril JSON Parsing
 // Using moshi for parsing.
@@ -15,6 +16,16 @@ data class BrilFunction(
     val instrs: List<BrilInstr>,
     val pos: BrilSourcePosition?,
 )
+
+fun BrilFunction.labels(): TreeSet<String> {
+    val res = TreeSet<String>()
+    this.instrs.forEach { instr ->
+        if (instr is BrilLabel) {
+            res.add(instr.label)
+        }
+    }
+    return res
+}
 
 data class BrilArg(
     val name: String,
@@ -263,7 +274,7 @@ class BrilInstrAdapter {
 
 data class BrilLabel(
     val label: String,
-    val pos: BrilSourcePosition?,
+    val pos: BrilSourcePosition? = null,
 ) : BrilInstr
 
 sealed interface BrilPrimitiveValueType
