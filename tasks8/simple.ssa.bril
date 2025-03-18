@@ -1,0 +1,23 @@
+@main(n: int) {
+.start:
+  i.0: int = const 0;
+  r.0: int = const 1;
+.header:
+  cond.0: int = phi undef cond.1 .start .body;
+  four.0: int = phi undef four.1 .start .body;
+  i.1: int = phi i.0 i.2 .start .body;
+  one.0: int = phi undef one.1 .start .body;
+  r.1: int = phi r.0 r.2 .start .body;
+  two.0: int = phi undef two.1 .start .body;
+  cond.1: bool = lt i.1 n;
+  br cond.1 .body .end;
+.body:
+  one.1: int = const 1;
+  two.1: int = add one.1 one.1;
+  four.1: int = add two.1 two.1;
+  i.2: int = add i.1 one.1;
+  r.2: int = mul r.1 four.1;
+  jmp .header;
+.end:
+  print r.1;
+}

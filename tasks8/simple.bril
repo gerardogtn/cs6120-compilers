@@ -1,0 +1,19 @@
+# ARGS 5
+# Compute the nth power of four.
+@main(n: int) {
+.start:
+    i: int = const 0;
+    r: int = const 1;
+.header:
+    cond: bool = lt i n;
+    br cond .body .end;
+.body:
+    one: int = const 1;
+    two: int = add one one;
+    four: int = add two two;
+    i: int = add i one;
+    r: int = mul r four;
+    jmp .header;
+.end:
+    print r;
+}

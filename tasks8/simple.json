@@ -1,0 +1,112 @@
+{
+  "functions": [
+    {
+      "args": [
+        {
+          "name": "n",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "label": "start"
+        },
+        {
+          "dest": "i",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "r",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "label": "header"
+        },
+        {
+          "args": [
+            "i",
+            "n"
+          ],
+          "dest": "cond",
+          "op": "lt",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "cond"
+          ],
+          "labels": [
+            "body",
+            "end"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "body"
+        },
+        {
+          "dest": "one",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "args": [
+            "one",
+            "one"
+          ],
+          "dest": "two",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "args": [
+            "two",
+            "two"
+          ],
+          "dest": "four",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "args": [
+            "i",
+            "one"
+          ],
+          "dest": "i",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "args": [
+            "r",
+            "four"
+          ],
+          "dest": "r",
+          "op": "mul",
+          "type": "int"
+        },
+        {
+          "labels": [
+            "header"
+          ],
+          "op": "jmp"
+        },
+        {
+          "label": "end"
+        },
+        {
+          "args": [
+            "r"
+          ],
+          "op": "print"
+        }
+      ],
+      "name": "main"
+    }
+  ]
+}

@@ -1,0 +1,190 @@
+{
+  "functions": [
+    {
+      "args": [
+        {
+          "name": "n",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "label": "start"
+        },
+        {
+          "dest": "i.0",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "dest": "r.0",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "label": "header"
+        },
+        {
+          "args": [
+            "undef",
+            "cond.1"
+          ],
+          "dest": "cond.0",
+          "labels": [
+            "start",
+            "body"
+          ],
+          "op": "phi",
+          "type": "int"
+        },
+        {
+          "args": [
+            "undef",
+            "four.1"
+          ],
+          "dest": "four.0",
+          "labels": [
+            "start",
+            "body"
+          ],
+          "op": "phi",
+          "type": "int"
+        },
+        {
+          "args": [
+            "i.0",
+            "i.2"
+          ],
+          "dest": "i.1",
+          "labels": [
+            "start",
+            "body"
+          ],
+          "op": "phi",
+          "type": "int"
+        },
+        {
+          "args": [
+            "undef",
+            "one.1"
+          ],
+          "dest": "one.0",
+          "labels": [
+            "start",
+            "body"
+          ],
+          "op": "phi",
+          "type": "int"
+        },
+        {
+          "args": [
+            "r.0",
+            "r.2"
+          ],
+          "dest": "r.1",
+          "labels": [
+            "start",
+            "body"
+          ],
+          "op": "phi",
+          "type": "int"
+        },
+        {
+          "args": [
+            "undef",
+            "two.1"
+          ],
+          "dest": "two.0",
+          "labels": [
+            "start",
+            "body"
+          ],
+          "op": "phi",
+          "type": "int"
+        },
+        {
+          "args": [
+            "i.1",
+            "n"
+          ],
+          "dest": "cond.1",
+          "op": "lt",
+          "type": "bool"
+        },
+        {
+          "args": [
+            "cond.1"
+          ],
+          "labels": [
+            "body",
+            "end"
+          ],
+          "op": "br"
+        },
+        {
+          "label": "body"
+        },
+        {
+          "dest": "one.1",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "args": [
+            "one.1",
+            "one.1"
+          ],
+          "dest": "two.1",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "args": [
+            "two.1",
+            "two.1"
+          ],
+          "dest": "four.1",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "args": [
+            "i.1",
+            "one.1"
+          ],
+          "dest": "i.2",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "args": [
+            "r.1",
+            "four.1"
+          ],
+          "dest": "r.2",
+          "op": "mul",
+          "type": "int"
+        },
+        {
+          "labels": [
+            "header"
+          ],
+          "op": "jmp"
+        },
+        {
+          "label": "end"
+        },
+        {
+          "args": [
+            "r.1"
+          ],
+          "op": "print"
+        }
+      ],
+      "name": "main"
+    }
+  ]
+}
