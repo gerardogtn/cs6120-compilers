@@ -24,12 +24,57 @@ fun backedges(
     return found
 }
 
+// Return the nodes that can reach target in cfg, while ignoring skip.
+fun reach(
+    cfg: Cfg,
+    target: Int,
+    skip: Int,
+): TreeSet<Int> {
+    System.err.println("Checking nodes that reach $target, ignoring $skip")
+    val reach = TreeSet<Int>()
+    val visited = TreeSet<Int>()
+    visited.add(skip) // ignore skip
+    val queue = TreeSet<Int>()
+    for (i in 0 ..< cfg.size) {
+        queue.add(i)
+    }
+
+    for (vi in 0 ..< cfg.size) {
+        if (vi != skip && vi !in reach && vi !in visited) {
+            val next = cfg[vi]!!
+            var reaches = false
+            for (vj in next) {
+                if (vj != skip && vj in reach) {
+                    reaches = true
+                    break
+                }
+            }
+            if (reaches) {
+                visited.removeAll(next)
+                visited.add(skip)
+                reach.add(vi)
+                queue.addAll(next)
+            }
+        }
+    }
+
+    return reach
+}
+
 typealias NaturalLoops = TreeSet<LinkedList<Int>>
 fun naturalLoops(
+    cfg: Cfg,
     backedges: BackEdges,
 ): NaturalLoops {
     val res = NaturalLoops()
-
+    backedges.forEach { (vi, n) -> 
+        n.forEach { vj -> 
+            val reach = reach(cfg, target=vi, skip=vj)
+            reach.add(vi)
+            reach.add(vj)
+            System.err.println(reach)
+        }
+    }
     return res
 }
 
@@ -50,7 +95,7 @@ fun loopOptimize(
             System.err.println("backedges")
             backedges.forEach { System.err.println(it) }
             System.err.println("naturalLoops")
-            val naturalLoops = naturalLoops(backedges)
+            val naturalLoops = naturalLoops(cfg, backedges)
             naturalLoops.forEach { System.err.println(it) }
             brilFun.copy(
                 // TODO: Change function
