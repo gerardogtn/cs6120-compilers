@@ -21,8 +21,16 @@ fun backedges(
             }
         }
     }
-    found.forEach { System.err.println(it) }
     return found
+}
+
+typealias NaturalLoops = TreeSet<LinkedList<Int>>
+fun naturalLoops(
+    backedges: BackEdges,
+): NaturalLoops {
+    val res = NaturalLoops()
+
+    return res
 }
 
 // p is a bril program in ssa form.
@@ -38,8 +46,12 @@ fun loopOptimize(
             val strictDominates = flip_doms(isdom, strict = true)
             System.err.println("strict dominates")
             strictDominates.forEach { System.err.println(it) }
+            val backedges = backedges(cfg, strictDominates)
             System.err.println("backedges")
-            backedges(cfg, strictDominates)
+            backedges.forEach { System.err.println(it) }
+            System.err.println("naturalLoops")
+            val naturalLoops = naturalLoops(backedges)
+            naturalLoops.forEach { System.err.println(it) }
             brilFun.copy(
                 // TODO: Change function
             )
