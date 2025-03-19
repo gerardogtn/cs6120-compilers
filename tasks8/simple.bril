@@ -4,6 +4,7 @@
 .start:
     i: int = const 0;
     r: int = const 1;
+    jmp .header;
 .header:
     cond: bool = lt i n;
     br cond .body .end;

@@ -57,10 +57,11 @@ fun bidToLabel(
     return result
 }
 
+typealias LabelToBlock = TreeMap<String, Int>
 fun labelToBlock(
     blocks: List<Block>
-): TreeMap<String, Int> {
-    val result = TreeMap<String, Int>()
+): LabelToBlock {
+    val result = LabelToBlock()
     blocks.forEachIndexed { i, b -> 
         when (val l = b.firstOrNull()) {
             is BrilLabel -> {

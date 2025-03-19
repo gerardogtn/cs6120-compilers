@@ -66,11 +66,13 @@ data class NaturalLoop(
     val end: Int,
     val middle: TreeSet<Int>,
 )
+
+typealias NaturalLoops = LinkedList<NaturalLoop>
 fun naturalLoops(
     cfg: Cfg,
     backedges: BackEdges,
-): LinkedList<NaturalLoop> {
-    val res = LinkedList<NaturalLoop>()
+): NaturalLoops {
+    val res = NaturalLoops()
     backedges.forEach { (vi, n) -> 
         n.forEach { vj -> 
             val reach = reach(cfg, target=vi, skip=vj)
@@ -96,33 +98,123 @@ fun nextLabelGenerator(
         counter = counter + 1
         candidate
     }
+}
 
+typealias NextUniqueString = (String) -> String
+fun nextUniqueStringGenerator(
+    taken: TreeSet<String>
+): NextUniqueString {
+    val acc = TreeMap<String, Int>()
+    taken.forEach { s -> 
+        acc.put(s, 0)
+    }
+    return { l -> 
+        if (acc.contains(l).not()) {
+            acc.put(l, 0)
+        }
+        var c = acc[l]!!
+        acc.put(l, c + 1)
+        "$l.$c"
+    }
+}
+
+fun insertPreHeaders(
+    p: BrilProgram,
+): BrilProgram {
+    return p.copy(
+        functions = p.functions.map { brilFun -> 
+            val (blocks, cfg) = cfg(brilFun)
+            val isdom = doms(blocks, cfg)
+            val strictDominates = flip_doms(isdom, strict = true)
+            val backedges = backedges(cfg, strictDominates)
+            val naturalLoops = naturalLoops(cfg, backedges)
+            val nextLabel = nextLabelGenerator(brilFun.labels())
+            val labelToBlock = labelToBlock(blocks)
+            insertPreHeaders(
+                f = brilFun,
+                naturalLoops = naturalLoops,
+                nextLabel = nextLabel,
+                blocks = blocks,
+                labelToBlock = labelToBlock,
+            )
+        }
+    )
 }
 
 fun insertPreHeaders(
     f: BrilFunction,
-    loops: List<NaturalLoop>,
+    naturalLoops: NaturalLoops,
     nextLabel: NextLabel,
     blocks: Blocks,
+    labelToBlock: LabelToBlock,
 ): BrilFunction {
-    val process = TreeSet<Int>()
-    loops.forEach { (start, _, _) -> 
-        process.add(start)
+    val preheaderLabels = TreeMap<Int, String>()
+    naturalLoops.forEach { (s, _, _) -> 
+        val l = nextLabel()
+        preheaderLabels.put(s, l)
     }
-    val instrs1 = LinkedList<BrilInstr>()
-    blocks.forEachIndexed { i, block -> 
-        if (i in process) {
-            instrs1.add(
-                BrilLabel(
-                    label = nextLabel(),
-                    pos = null,
-                )
-            )
-        }
-        instrs1.addAll(block)
+
+    // the set of nodes that are in a loop that starts with s.
+    val looped = TreeMap<Int, TreeSet<Int>>()
+    for (i in 0 ..< blocks.size) {
+        looped[i] = TreeSet()
     }
+    naturalLoops.forEach { (s, e, m) ->
+        looped[s]!!.add(e)
+        looped[s]!!.addAll(m)
+    }
+
+    // Rebuild the program with preheaders.
     return f.copy(
-        instrs = instrs1
+        instrs = blocks.mapIndexed { bid, b -> 
+            val prefix = LinkedList<BrilInstr>()
+            if (preheaderLabels.contains(bid)) {
+                prefix.add(
+                    BrilLabel(
+                        label = preheaderLabels[bid]!!,
+                        pos = null,
+                    )
+                )
+                prefix.add(
+                    BrilJmpOp(
+                        op = "jmp",
+                        label = (b.first() as BrilLabel).label,
+                    )
+                )
+            }
+            val items = b.map { instr -> 
+                if (instr is BrilJmpOp) {
+                    val lid = labelToBlock[instr.label]!!
+                    if (preheaderLabels.contains(lid) && looped[lid]!!.contains(bid).not()) {
+                        instr.copy(
+                            label = preheaderLabels[lid]!!
+                        )
+                    } else {
+                        instr
+                    }
+                } else if (instr is BrilBrOp) {
+                    val lidL = labelToBlock[instr.labelL]!!
+                    val labelL = if (preheaderLabels.contains(lidL) && looped[lidL]?.contains(bid) == false) {
+                        preheaderLabels[lidL]!!
+                    } else {
+                        instr.labelL
+                    }
+                    val lidR = labelToBlock[instr.labelR]!!
+                    val labelR = if (preheaderLabels.contains(lidR) && looped[lidR]?.contains(bid) == false) {
+                        preheaderLabels[lidR]!!
+                    } else {
+                        instr.labelR
+                    }
+                    instr.copy(
+                        labelL = labelL,
+                        labelR = labelR,
+                    )
+                } else {
+                    instr
+                }
+            }
+            prefix.plus(items)
+        }.flatten()
     )
 }
 
@@ -149,12 +241,7 @@ fun loopOptimize(
             val naturalLoops = naturalLoops(cfg, backedges)
             naturalLoops.forEach { System.err.println(it) }
             val nextLabel = nextLabelGenerator(brilFun.labels())
-            insertPreHeaders(
-                brilFun,
-                naturalLoops,
-                nextLabel,
-                blocks
-            )
+            brilFun
         }
     )
     val p2 = toSsa(p1)
@@ -180,7 +267,9 @@ fun main(args: Array<String>) {
         return
     }   
 
-    val p1 = toSsa(p)
-    val p2 = loopOptimize(p1)
-    println(adapter.toJson(p2))
+    val p0 = insertPreHeaders(p)
+    println(adapter.toJson(p0))
+    //val p1 = toSsa(p0)
+    //val p2 = loopOptimize(p1)
+    //println(adapter.toJson(p2))
 }
