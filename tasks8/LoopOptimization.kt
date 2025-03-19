@@ -270,6 +270,7 @@ fun main(args: Array<String>) {
     val p0 = insertPreHeaders(p)
     //println(adapter.toJson(p0))
     val p1 = toSsa(p0)
-    val p2 = loopOptimize(p1)
+    val p2 = dce(p1)
+    //val p2 = loopOptimize(p1)
     println(adapter.toJson(p2))
 }
