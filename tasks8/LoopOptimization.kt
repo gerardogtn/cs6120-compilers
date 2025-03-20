@@ -268,12 +268,12 @@ fun licm(
     val invariants = curr
     
     val dests = TreeSet<String>()
-    System.err.println("invariants")
+    //System.err.println("invariants")
     for (b in loopBlocks) {
-        System.err.println("block $b")
+        //System.err.println("block $b")
         invariants[b]!!.forEach { (i, instr) ->
-            System.err.println(instr)
-            dests.add(instr.dest()!!)
+            //System.err.println(instr)
+            instr.dest()?.let { dests.add(it) }
         }
     }
 
@@ -286,8 +286,8 @@ fun licm(
             }
         }
     }
-    System.err.println("loop exits")
-    System.err.println(exits)
+    //System.err.println("loop exits")
+    //System.err.println(exits)
 
     for (exit in exits) {
         for (instr in blocks[exit]!!) {
@@ -327,16 +327,16 @@ fun loopOptimize(
     brilFun: BrilFunction,
 ): BrilFunction {
     val (blocks, cfg) = cfg(brilFun)
-    System.err.println("cfg")
-    cfg.forEach { System.err.println(it) }
+    //System.err.println("cfg")
+    //cfg.forEach { System.err.println(it) }
     val isdom = doms(blocks, cfg)
     val strictDominates = flip_doms(isdom, strict = true)
-    System.err.println("strict dominates")
-    strictDominates.forEach { System.err.println(it) }
+    //System.err.println("strict dominates")
+    //strictDominates.forEach { System.err.println(it) }
     val backedges = backedges(cfg, strictDominates)
-    System.err.println("backedges")
-    backedges.forEach { System.err.println(it) }
-    System.err.println("naturalLoops")
+    //System.err.println("backedges")
+    //backedges.forEach { System.err.println(it) }
+    //System.err.println("naturalLoops")
     val naturalLoops = naturalLoops(cfg, backedges)
 
 
@@ -383,11 +383,18 @@ fun main(args: Array<String>) {
         println("Invalid input")
         return
     }   
-
     val p0 = insertPreHeaders(p)
+    if (argSet.contains("--preheaders")) {
+        println(adapter.toJson(p0))
+        return
+    }
     //println(adapter.toJson(p0))
+    System.err.println(p0.functions.first().instrs.first())
     val p1 = toSsa(p0)
-    val p2 = dce(p1)
+    System.err.println(p1.functions.first().instrs.first())
+    val p2: BrilProgram = lvn(p1)
+    System.err.println(p2.functions.first().instrs.first())
     val p3 = loopOptimize(p2)
+    System.err.println(p3.functions.first().instrs.first())
     println(adapter.toJson(p3))
 }

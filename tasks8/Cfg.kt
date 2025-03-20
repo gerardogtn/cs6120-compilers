@@ -7,6 +7,8 @@ fun blocks(brilFunction: BrilFunction): List<Block> {
     val result = LinkedList<Block>()
     var curr = LinkedList<BrilInstr>()
     if (brilFunction.instrs.firstOrNull() !is BrilLabel) {
+        //System.err.println("first is")
+        //System.err.println(brilFunction.instrs.firstOrNull())
         curr.add(BrilLabel(label = "syntactic_entry", pos = null))
     }
     brilFunction.instrs.forEach { instr -> 

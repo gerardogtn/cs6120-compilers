@@ -776,6 +776,14 @@ fun lvn(
     )
 }
 
+fun lvn(
+    program: BrilProgram,
+): BrilProgram {
+    return program.copy(
+        functions = program.functions.map { lvn(it) }
+    )
+}
+
 fun dce(
     instrs: List<BrilInstr>
 ): List<BrilInstr> {
