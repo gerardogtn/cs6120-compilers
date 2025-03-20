@@ -274,6 +274,34 @@ fun licm(
     return brilFun
 }
 
+fun loopOptimize(
+    brilFun: BrilFunction,
+): BrilFunction {
+    val (blocks, cfg) = cfg(brilFun)
+    System.err.println("cfg")
+    cfg.forEach { System.err.println(it) }
+    val isdom = doms(blocks, cfg)
+    val strictDominates = flip_doms(isdom, strict = true)
+    System.err.println("strict dominates")
+    strictDominates.forEach { System.err.println(it) }
+    val backedges = backedges(cfg, strictDominates)
+    System.err.println("backedges")
+    backedges.forEach { System.err.println(it) }
+    System.err.println("naturalLoops")
+    val naturalLoops = naturalLoops(cfg, backedges)
+    val strategy = reachableDefinitions(brilFun)
+    val result = dataflow(strategy, brilFun)
+    System.err.println("inm")
+    result.inm.forEach { System.err.println(it) }
+    System.err.println("outm")
+    result.outm.forEach { System.err.println(it) }
+    naturalLoops.forEach { 
+        licm(it, result, brilFun)
+    }
+ 
+    return brilFun
+}
+
 // p is a bril program in ssa-form with preheaders.
 fun loopOptimize(
     p: BrilProgram,
@@ -283,29 +311,8 @@ fun loopOptimize(
     // then you can be sure that block (b - 1) is the preheader of the loop.
     val p1 = p.copy(
         functions = p.functions.map { brilFun -> 
-            val (blocks, cfg) = cfg(brilFun)
-            System.err.println("cfg")
-            cfg.forEach { System.err.println(it) }
-            val isdom = doms(blocks, cfg)
-            val strictDominates = flip_doms(isdom, strict = true)
-            System.err.println("strict dominates")
-            strictDominates.forEach { System.err.println(it) }
-            val backedges = backedges(cfg, strictDominates)
-            System.err.println("backedges")
-            backedges.forEach { System.err.println(it) }
-            System.err.println("naturalLoops")
-            val naturalLoops = naturalLoops(cfg, backedges)
-            val strategy = reachableDefinitions(brilFun)
-            val result = dataflow(strategy, brilFun)
-            System.err.println("inm")
-            result.inm.forEach { System.err.println(it) }
-            System.err.println("outm")
-            result.outm.forEach { System.err.println(it) }
-            naturalLoops.forEach { 
-                licm(it, result, brilFun)
-            }
-            brilFun
-        }
+            loopOptimize(brilFun)
+       }
     )
     return p1
 }
