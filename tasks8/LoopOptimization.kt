@@ -30,7 +30,6 @@ fun reach(
     target: Int,
     skip: Int,
 ): TreeSet<Int> {
-    System.err.println("Checking nodes that reach $target, ignoring $skip")
     val reach = TreeSet<Int>()
     val visited = TreeSet<Int>()
     visited.add(skip) // ignore skip
@@ -218,11 +217,68 @@ fun insertPreHeaders(
     )
 }
 
-// p is a bril program in ssa form.
+// Block to index to instruction
+typealias Invariants = TreeMap<Int, TreeMap<Int, BrilInstr>>
+fun isInvariant(
+    b: Int,
+    i: Int,
+    instr: BrilInstr,
+    invariants: Invariants,
+    result: DataflowResult<TreeSet<String>>,
+    loop: TreeSet<Int>,
+): Boolean {
+    return instr is BrilConstOp
+}
+
+fun licm(
+    naturalLoop: NaturalLoop,
+    result: DataflowResult<TreeSet<String>>,
+    brilFun: BrilFunction,
+): BrilFunction {
+    val loopBlocks = TreeSet<Int>()
+    val (blocks, cfg) = cfg(brilFun)
+    val (s, e, m) = naturalLoop
+    loopBlocks.add(s)
+    loopBlocks.add(e)
+    loopBlocks.addAll(m)
+    var curr = Invariants()
+    var prev: Invariants? = null
+    for (b in loopBlocks) {
+        curr[b] = TreeMap()
+    }
+    while (prev != curr) {
+        prev = curr
+        curr = TreeMap(curr)
+        for (b in loopBlocks) {
+            val block = blocks[b]!!
+            for (i in 0 ..< block.size) {
+                val instr = block[i]!!
+                var isInvariant = instr.args()?.all { 
+                    result.outm[s - 1]!!.contains(it)
+                } ?: false
+                isInvariant = isInvariant && (instr !is BrilLabel) && (instr !is BrilJmpOp) && (instr !is BrilBrOp)
+                if (isInvariant) {
+                    curr[b]!![i] = instr 
+                }
+            }
+        }
+    }
+    // curr will contain the invariants
+    val invariants = curr
+
+    System.err.println("invariants")
+    for (i in loopBlocks) {
+        System.err.println("block $i")
+        curr[i]!!.forEach { System.err.println(it) }
+    }
+    return brilFun
+}
+
+// p is a bril program in ssa-form with preheaders.
 fun loopOptimize(
     p: BrilProgram,
 ): BrilProgram {
-    // p1 is the ssa-program with preheaders.
+    // p is the ssa-program with preheaders.
     // If you have identified that block b starts a natural loop,
     // then you can be sure that block (b - 1) is the preheader of the loop.
     val p1 = p.copy(
@@ -239,12 +295,18 @@ fun loopOptimize(
             backedges.forEach { System.err.println(it) }
             System.err.println("naturalLoops")
             val naturalLoops = naturalLoops(cfg, backedges)
-            naturalLoops.forEach { System.err.println(it) }
-            val nextLabel = nextLabelGenerator(brilFun.labels())
+            val strategy = reachableDefinitions(brilFun)
+            val result = dataflow(strategy, brilFun)
+            System.err.println("inm")
+            result.inm.forEach { System.err.println(it) }
+            System.err.println("outm")
+            result.outm.forEach { System.err.println(it) }
+            naturalLoops.forEach { 
+                licm(it, result, brilFun)
+            }
             brilFun
         }
     )
-    val p2 = toSsa(p1)
     return p1
 }
 
@@ -271,6 +333,6 @@ fun main(args: Array<String>) {
     //println(adapter.toJson(p0))
     val p1 = toSsa(p0)
     val p2 = dce(p1)
-    //val p2 = loopOptimize(p1)
-    println(adapter.toJson(p2))
+    val p3 = loopOptimize(p2)
+    println(adapter.toJson(p3))
 }
