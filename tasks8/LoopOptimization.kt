@@ -232,9 +232,10 @@ fun isInvariant(
 
 fun licm(
     naturalLoop: NaturalLoop,
-    result: DataflowResult<TreeSet<String>>,
     brilFun: BrilFunction,
 ): BrilFunction {
+    val strategy = reachableDefinitions(brilFun)
+    val result = dataflow(strategy, brilFun)
     val loopBlocks = TreeSet<Int>()
     val (blocks, cfg) = cfg(brilFun)
     val (s, e, m) = naturalLoop
@@ -265,13 +266,61 @@ fun licm(
     }
     // curr will contain the invariants
     val invariants = curr
-
+    
+    val dests = TreeSet<String>()
     System.err.println("invariants")
-    for (i in loopBlocks) {
-        System.err.println("block $i")
-        curr[i]!!.forEach { System.err.println(it) }
+    for (b in loopBlocks) {
+        System.err.println("block $b")
+        invariants[b]!!.forEach { (i, instr) ->
+            System.err.println(instr)
+            dests.add(instr.dest()!!)
+        }
     }
-    return brilFun
+
+    val unmovable = LinkedList<String>()
+    val exits = TreeSet<Int>()
+    for (b in loopBlocks) {
+        for (n in cfg[b]!!) {
+            if (n !in loopBlocks) {
+                exits.add(n)
+            }
+        }
+    }
+    System.err.println("loop exits")
+    System.err.println(exits)
+
+    for (exit in exits) {
+        for (instr in blocks[exit]!!) {
+            if (dests.any { instr.args()?.contains(it) ?: false }) {
+                unmovable.add(instr.dest()!!)
+            }
+        }
+    }
+
+    for (i in loopBlocks) {
+        invariants[i]!!.forEach { _, instr -> 
+            if (instr.dest() !in unmovable) {
+                blocks[s - 1].appendToBlock(instr)
+                blocks[i].remove(instr)
+            }
+        }
+    }
+    return brilFun.copy(
+        instrs = blocks.flatMap {
+            it
+        }
+    )
+}
+
+fun Block.appendToBlock(
+    instr: BrilInstr,
+) {
+    var i = this.size - 1
+    val last = this[i]!!
+    if (last is BrilJmpOp || last is BrilRetOp || last is BrilBrOp) {
+        i = i - 1
+    }
+    this.add(i + 1, instr)
 }
 
 fun loopOptimize(
@@ -289,17 +338,16 @@ fun loopOptimize(
     backedges.forEach { System.err.println(it) }
     System.err.println("naturalLoops")
     val naturalLoops = naturalLoops(cfg, backedges)
-    val strategy = reachableDefinitions(brilFun)
-    val result = dataflow(strategy, brilFun)
-    System.err.println("inm")
-    result.inm.forEach { System.err.println(it) }
-    System.err.println("outm")
-    result.outm.forEach { System.err.println(it) }
-    naturalLoops.forEach { 
-        licm(it, result, brilFun)
+
+
+    // Natural loops won't change on optimization so there
+    // is no need to recalculate them, but reachable definitions
+    // might change so we need to recompute them. 
+    var optimized = brilFun
+    naturalLoops.forEach {
+        optimized = licm(it, optimized)
     }
- 
-    return brilFun
+    return optimized
 }
 
 // p is a bril program in ssa-form with preheaders.
