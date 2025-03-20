@@ -285,6 +285,7 @@ fun detectLoopInvariants(
                     // * check if all operands are defined outside the loop OR exactly one definition from a loop invariant statement inside the loop
                     var loopInvariantInside = 0
                     for (operand in operands) {
+                        var defined = false
                         if (operand !in inm[s - 1]!!) {
 
                             // * check if the operand is loop invariant
@@ -296,6 +297,7 @@ fun detectLoopInvariants(
                                 val block2 = blocks[bid2]!!
                                 for (instr2 in block2) {
                                     if (instr2 is BrilOp && instr2.dest() == operand) {
+                                        defined = true
                                         // * check if the instruction is loop invariant
                                         if (loopInvariants.contains(instr2)) {
                                             loopInvariantInside += 1
@@ -311,7 +313,7 @@ fun detectLoopInvariants(
                                 }
                             }
 
-                            if (loopInvariantInside > 1) {
+                            if (loopInvariantInside > 1 || !defined) {
                                 isLoopInvariant = false
                                 break
                             }
