@@ -218,6 +218,123 @@ fun insertPreHeaders(
     )
 }
 
+fun detectLoopInvariants(
+    l: NaturalLoop,
+    inm: TreeMap<Int, TreeSet<String>>,
+    outm: TreeMap<Int, TreeSet<String>>,
+    blocks: Blocks,
+    cfg: Cfg,
+) : LinkedList<BrilInstr> {
+    val (s, e, m) = l
+    val loopBody = TreeSet<Int>()
+    loopBody.add(s)
+    loopBody.addAll(m)
+    loopBody.add(e)
+
+    // check if the instruction is loop invariant
+    val loopInvariants = LinkedList<BrilInstr>()
+
+    // * FIRST PASS - check if all operands defined outside
+    for (bid in loopBody) {
+        val block = blocks[bid]!!
+        for (instr in block) {
+            if (instr is BrilOp) {
+                // * change if condition instead of checking for null
+                if (instr.dest() == null) {
+                    continue
+                }
+                val operands = instr.args()
+                var isLoopInvariant = true
+
+                // * check if all operands are defined outside the loop using inm of preheader
+                for (operand in operands) {
+
+                    if (operand !in inm[s-1]!!) {
+                        isLoopInvariant = false
+                        break
+                    }
+
+                }
+
+                if (isLoopInvariant) {
+                    loopInvariants.add(instr)
+                }
+            }
+        }
+    }
+
+    // * REPEATED PASS - all reaching definitions outside of loop OR 
+    // * exactly one definition from a loop invariant statement inside the loop
+    // * repeat until no more loop invariants can be found
+
+    var changed = true
+    // ? need to actually mutate at the end of the pass
+    while (changed) {
+        changed = false
+        for (bid in loopBody) {
+            val block = blocks[bid]!!
+            for (instr in block) {
+                if (instr is BrilOp) {
+                    // * change if condition instead of checking for null
+                    if (instr.dest() == null) {
+                        continue
+                    }
+                    val operands = instr.args()
+                    var isLoopInvariant = true
+
+                    // * check if all operands are defined outside the loop OR exactly one definition from a loop invariant statement inside the loop
+                    var loopInvariantInside = 0
+                    for (operand in operands) {
+                        if (operand !in inm[s - 1]!!) {
+
+                            // * check if the operand is loop invariant
+                            // * need to go through each op, if its an assignment to the operand then check that it is loop invariant
+                            for (bid2 in loopBody) {
+                                if (bid2 == bid) {
+                                    continue
+                                }
+                                val block2 = blocks[bid2]!!
+                                for (instr2 in block2) {
+                                    if (instr2 is BrilOp && instr2.dest() == operand) {
+                                        // * check if the instruction is loop invariant
+                                        if (loopInvariants.contains(instr2)) {
+                                            loopInvariantInside += 1
+                                            if (loopInvariantInside > 1) {
+                                                isLoopInvariant = false
+                                                break
+                                            }
+                                        } else {
+                                            isLoopInvariant = false
+                                            break
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (loopInvariantInside > 1) {
+                                isLoopInvariant = false
+                                break
+                            }
+                        }
+                    }
+
+                    if (isLoopInvariant) {
+                        // * check if the instruction is already in the loop invariants
+                        if (!loopInvariants.contains(instr)) {
+                            loopInvariants.add(instr)
+                            changed = true
+                        }
+                    }
+
+                }
+            }
+        }
+    }
+
+
+    return loopInvariants
+}
+
 // p is a bril program in ssa form.
 fun loopOptimize(
     p: BrilProgram,
@@ -228,23 +345,66 @@ fun loopOptimize(
     val p1 = p.copy(
         functions = p.functions.map { brilFun -> 
             val (blocks, cfg) = cfg(brilFun)
-            System.err.println("cfg")
-            cfg.forEach { System.err.println(it) }
+            // cfg.forEach { System.err.println(it) }
             val isdom = doms(blocks, cfg)
             val strictDominates = flip_doms(isdom, strict = true)
-            System.err.println("strict dominates")
-            strictDominates.forEach { System.err.println(it) }
+            // strictDominates.forEach { System.err.println(it) }
             val backedges = backedges(cfg, strictDominates)
-            System.err.println("backedges")
-            backedges.forEach { System.err.println(it) }
-            System.err.println("naturalLoops")
+            // backedges.forEach { System.err.println(it) }
             val naturalLoops = naturalLoops(cfg, backedges)
-            naturalLoops.forEach { System.err.println(it) }
+            // naturalLoops.forEach { System.err.println(it) }
             val nextLabel = nextLabelGenerator(brilFun.labels())
             brilFun
         }
     )
-    val p2 = toSsa(p1)
+
+    // * iterate through p1 functions, get cfgs, blocks, and natural loops.
+    // * for each natural loop, get the preheader and the loop body.
+    // * for each instruction in the loop body, check if it is a candidate for code motion.
+    // *  - this means it is loop invariant, 
+    // *  - in blocks that dominate all exits of the loop
+    // *  - assign to variable not assigned anywhere else in the loop.
+    // *  - in blocks that dominate all blocks in loop that use the variable.
+    // * perform a depth first search of the blocks:
+    // * move candidate to preheader if all invariant operations it depends on have been moved
+
+    for (f in p1.functions) {
+        val (blocks, cfg) = cfg(f)
+        val isdom = doms(blocks, cfg)
+        val strictDominates = flip_doms(isdom, strict = true)
+        val backedges = backedges(cfg, strictDominates)
+        val naturalLoops = naturalLoops(cfg, backedges)
+        // println("Natural loops: $naturalLoops")
+        val nextLabel = nextLabelGenerator(f.labels())
+        val strategy = reachableDefinitions(f)
+        val result = dataflow(strategy, f)
+        val (b, inm, outm) = result
+        // println("Blocks: $b")
+        // println("INM: $inm")
+        // println("OUTM: $outm")
+
+        for (loop in naturalLoops) {
+            val (s, e, m) = loop
+            val loopBody = TreeSet<Int>()
+            loopBody.add(s)
+            loopBody.addAll(m)
+            loopBody.add(e)
+
+            // check if the instruction is loop invariant
+            val loopInvariants = detectLoopInvariants(loop, inm, outm, blocks, cfg)
+            println("Loop invariants: $loopInvariants")
+
+            // // move the loop invariants to the preheader
+            // for (instr in loopInvariants) {
+            //     val preheader = nextLabel()
+            //     val newInstr = instr.copy(dest = preheader)
+            //     f.instrs.add(0, newInstr)
+            //     f.instrs.remove(instr)
+            // }
+        }
+
+    }
+
     return p1
 }
 
@@ -265,12 +425,12 @@ fun main(args: Array<String>) {
     if (p == null) {
         println("Invalid input")
         return
-    }   
+    }
 
     val p0 = insertPreHeaders(p)
     //println(adapter.toJson(p0))
     val p1 = toSsa(p0)
     val p2 = dce(p1)
-    //val p2 = loopOptimize(p1)
-    println(adapter.toJson(p2))
+    val p3 = loopOptimize(p2)
+    // println(adapter.toJson(p3))
 }
