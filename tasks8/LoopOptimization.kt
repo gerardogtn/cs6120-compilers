@@ -247,6 +247,8 @@ fun licm(
     for (b in loopBlocks) {
         curr[b] = TreeMap()
     }
+    // definition dominates all of its uses, 
+    // no other definitions of same variable exist in loop
     while (prev != curr) {
         prev = curr
         curr = TreeMap(curr)
@@ -257,8 +259,24 @@ fun licm(
                 var isInvariant = instr.args()?.all { 
                     result.outm[s - 1]!!.contains(it)
                 } ?: false
-                isInvariant = isInvariant && (instr !is BrilLabel) && (instr !is BrilJmpOp) && (instr !is BrilBrOp)
+                isInvariant = isInvariant && (instr !is BrilLabel) && (instr !is BrilJmpOp) && (instr !is BrilBrOp) && (instr !is BrilPhiOp) && (instr !is BrilCallOp) && (instr !is BrilPrintOp) && (instr !is BrilDivOp)
                 if (isInvariant) {
+                    // * check if definition dominates all uses
+                    for (n in cfg[b]!!) {
+                        if (n !in loopBlocks) {
+                            continue
+                        }
+                        for (j in 0 ..< blocks[n]!!.size) {
+                            val instr2 = blocks[n]!![j]!!
+                            if (instr2 is BrilJmpOp || instr2 is BrilBrOp) {
+                                continue
+                            }
+                            if (instr2.args()?.contains(instr.dest()!!) == true) {
+                                isInvariant = false
+                                break
+                            }
+                        }
+                    }
                     curr[b]!![i] = instr 
                 }
             }
@@ -270,10 +288,32 @@ fun licm(
     val dests = TreeSet<String>()
     //System.err.println("invariants")
     for (b in loopBlocks) {
-        //System.err.println("block $b")
+        // System.err.println("block $b")
         invariants[b]!!.forEach { (i, instr) ->
-            //System.err.println(instr)
+            // System.err.println(instr)
             instr.dest()?.let { dests.add(it) }
+        }
+    }
+
+    // * check if definitions dominate all uses
+    for (b in loopBlocks) {
+        for (i in 0 ..< blocks[b]!!.size) {
+            val instr = blocks[b]!![i]!!
+            if (instr is BrilJmpOp || instr is BrilBrOp) {
+                continue
+            }
+            instr.args()?.forEach { arg ->
+                if (dests.contains(arg)) {
+                    System.err.println("arg $arg")
+                    if (result.inm[b]!!.contains(arg).not()) {
+                        System.err.println("not dominated")
+                        dests.remove(arg)
+                        System.err.println("removing $arg")
+                        System.err.println("removing from invariants: $invariants[b]!![$i]")
+                        invariants[b]!!.remove(i)
+                    }
+                }
+            }
         }
     }
 
