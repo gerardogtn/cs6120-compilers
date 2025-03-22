@@ -218,7 +218,7 @@ fun insertPreHeaders(
 }
 
 // Block to index to instruction
-typealias Invariants = TreeMap<Int, TreeMap<Int, BrilInstr>>
+typealias Invariants = TreeMap<Int, TreeMap<String, BrilInstr>>
 fun isInvariant(
     b: Int,
     i: Int,
@@ -233,6 +233,7 @@ fun isInvariant(
 fun licm(
     naturalLoop: NaturalLoop,
     brilFun: BrilFunction,
+    sdom: Doms,
 ): BrilFunction {
     val strategy = reachableDefinitions(brilFun)
     val result = dataflow(strategy, brilFun)
@@ -243,10 +244,14 @@ fun licm(
     loopBlocks.add(e)
     loopBlocks.addAll(m)
     var curr = Invariants()
+    val defs = TreeSet<String>()
+    val usages = TreeMap<String, TreeSet<Int>>()
     var prev: Invariants? = null
     for (b in loopBlocks) {
         curr[b] = TreeMap()
     }
+    //System.err.println("Reacing defs for $naturalLoop")
+    //result.outm[s - 1]!!.forEach { System.err.println(it) }
     while (prev != curr) {
         prev = curr
         curr = TreeMap(curr)
@@ -254,13 +259,19 @@ fun licm(
             val block = blocks[b]!!
             for (i in 0 ..< block.size) {
                 val instr = block[i]!!
-                var isInvariant = instr.args()?.all { 
-                    result.outm[s - 1]!!.contains(it)
-                } ?: false
-                isInvariant = isInvariant && (instr !is BrilLabel) && (instr !is BrilJmpOp) && (instr !is BrilBrOp)
-                if (isInvariant) {
-                    curr[b]!![i] = instr 
+                val isInvariant = if (instr is BrilConstOp) {
+                    true
+                } else if (instr.hasSideEffects()){
+                    false
+                } else {
+                    instr.args()?.all {
+                        result.inm[s]!!.contains(it).not() || curr[b]!!.contains(it)
+                    } ?: true
                 }
+                if (isInvariant) {
+                    instr.dest()?.let { curr[b]!![it] = instr }
+                }
+                instr.dest()?.let { defs.add(it) }
             }
         }
     }
@@ -297,11 +308,19 @@ fun licm(
         }
     }
 
-    for (i in loopBlocks) {
-        invariants[i]!!.forEach { _, instr -> 
+    for (b in loopBlocks) {
+        invariants[b]!!.forEach { _, instr -> 
+            //val dominatesUsages = instr.dest()?.let { dest -> 
+                //if (dest == "t6.2") {
+                    //System.err.println("t6.2")
+                    //System.err.println(usages)
+                    //System.err.println(sdom[b])
+                //}
+                //usages[dest]!!.all { t -> sdom[b]!!.contains(t) || b == t }
+            //} ?: true
             if (instr.dest() !in unmovable) {
                 blocks[s - 1].appendToBlock(instr)
-                blocks[i].remove(instr)
+                blocks[b].remove(instr)
             }
         }
     }
@@ -345,7 +364,7 @@ fun loopOptimize(
     // might change so we need to recompute them. 
     var optimized = brilFun
     naturalLoops.forEach {
-        optimized = licm(it, optimized)
+        optimized = licm(it, optimized, strictDominates)
     }
     return optimized
 }
@@ -389,12 +408,12 @@ fun main(args: Array<String>) {
         return
     }
     //println(adapter.toJson(p0))
-    System.err.println(p0.functions.first().instrs.first())
-    val p1 = toSsa(p0)
-    System.err.println(p1.functions.first().instrs.first())
+    //System.err.println(p0.functions.first().instrs.first())
+    val p1 = dce(toSsa(p0))
+    //System.err.println(p1.functions.first().instrs.first())
     val p2: BrilProgram = lvn(p1)
-    System.err.println(p2.functions.first().instrs.first())
-    val p3 = loopOptimize(p2)
-    System.err.println(p3.functions.first().instrs.first())
+    //System.err.println(p2.functions.first().instrs.first())
+    val p3 = dce(loopOptimize(p2))
+    //System.err.println(p3.functions.first().instrs.first())
     println(adapter.toJson(p3))
 }

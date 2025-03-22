@@ -1,0 +1,10 @@
+[envs.compare]
+command = "bril2json < {filename} | ./run.sh |  brili {args} -p"
+output.out = "-"
+output.prof = "2"
+
+[envs.ssa]
+command = "bril2json < {filename} | ./run.sh | brili {args} -p"
+otuput.out = "-"
+output.prof_ssa = "2"
+

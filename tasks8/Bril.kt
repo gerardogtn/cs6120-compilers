@@ -104,6 +104,20 @@ fun BrilInstr.dest(): String? {
     }
 }
 
+fun BrilInstr.hasSideEffects(): Boolean {
+    return when (this) {
+        is BrilLabel -> true
+        is BrilDivOp -> true
+        is BrilCallOp -> true
+        is BrilPhiOp -> true
+        is BrilUnknownOp -> true
+        is BrilJmpOp -> true
+        is BrilBrOp -> true
+        is BrilRetOp -> true
+        else -> false
+    }
+}
+
 fun BrilInstr.renameDest(
     dest: String,
 ): BrilInstr {

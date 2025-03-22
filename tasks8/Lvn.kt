@@ -804,7 +804,7 @@ fun dce(
     return instrs.mapNotNull { instr -> 
         val dest = instr.dest()
         if (instr is BrilLabel && !seenLabels.contains(instr.label)) {
-            null
+            instr
         } else if (dest == null) {
             instr
         } else if (!seen.contains(dest)) {
