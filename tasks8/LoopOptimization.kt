@@ -174,12 +174,12 @@ fun insertPreHeaders(
                         pos = null,
                     )
                 )
-                prefix.add(
-                    BrilJmpOp(
-                        op = "jmp",
-                        label = (b.first() as BrilLabel).label,
-                    )
-                )
+                //prefix.add(
+                    //BrilJmpOp(
+                        //op = "jmp",
+                        //label = (b.first() as BrilLabel).label,
+                    //)
+                //)
             }
             val items = b.map { instr -> 
                 if (instr is BrilJmpOp) {
@@ -308,25 +308,21 @@ fun licm(
         }
     }
 
-    for (b in loopBlocks) {
-        invariants[b]!!.forEach { _, instr -> 
-            //val dominatesUsages = instr.dest()?.let { dest -> 
-                //if (dest == "t6.2") {
-                    //System.err.println("t6.2")
-                    //System.err.println(usages)
-                    //System.err.println(sdom[b])
-                //}
-                //usages[dest]!!.all { t -> sdom[b]!!.contains(t) || b == t }
-            //} ?: true
-            if (instr.dest() !in unmovable) {
-                blocks[s - 1].appendToBlock(instr)
-                blocks[b].remove(instr)
+    val nextBlocks = TreeMap<Int, LinkedList<BrilInstr>>()
+    blocks.forEachIndexed { b, instrs ->
+        nextBlocks[b] = LinkedList()
+        instrs.forEach { instr -> 
+            val dest = instr.dest()
+            if (b in loopBlocks && dest != null && invariants[b]!!.contains(dest) && dest !in unmovable) {
+                nextBlocks[s - 1]!!.appendToBlock(instr)
+            } else {
+                nextBlocks[b]!!.add(instr)
             }
         }
     }
     return brilFun.copy(
-        instrs = blocks.flatMap {
-            it
+        instrs = nextBlocks.flatMap { (_, instrs) -> 
+            instrs
         }
     )
 }
@@ -334,12 +330,12 @@ fun licm(
 fun Block.appendToBlock(
     instr: BrilInstr,
 ) {
-    var i = this.size - 1
-    val last = this[i]!!
+    var i = this.size
+    val last = this[i - 1]!!
     if (last is BrilJmpOp || last is BrilRetOp || last is BrilBrOp) {
         i = i - 1
     }
-    this.add(i + 1, instr)
+    this.add(i, instr)
 }
 
 fun loopOptimize(
@@ -402,18 +398,25 @@ fun main(args: Array<String>) {
         println("Invalid input")
         return
     }   
-    val p0 = insertPreHeaders(p)
+    val p0 = insertPreHeaders(lvn(p))
     if (argSet.contains("--preheaders")) {
         println(adapter.toJson(p0))
         return
     }
+
+    val p1 = dce(lvn(toSsa(p0)))
+    if (argSet.contains("--ssa")) {
+        System.err.println("ssa + lvn")
+        println(adapter.toJson(p1))
+        return
+    }
     //println(adapter.toJson(p0))
     //System.err.println(p0.functions.first().instrs.first())
-    val p1 = dce(toSsa(p0))
+    //val p1 = lvn(toSsa(p0))
     //System.err.println(p1.functions.first().instrs.first())
-    val p2: BrilProgram = lvn(p1)
     //System.err.println(p2.functions.first().instrs.first())
-    val p3 = dce(loopOptimize(p2))
+    //val p3 = lvn(loopOptimize(p1))
     //System.err.println(p3.functions.first().instrs.first())
-    println(adapter.toJson(p3))
+    val p2 = dce(lvn(loopOptimize(p1)))
+    println(adapter.toJson(p2))
 }

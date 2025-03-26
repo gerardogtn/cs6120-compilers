@@ -596,6 +596,49 @@ fun BrilNotOp.toLocalValue(
     }
 }
 
+fun replaceArgs(
+    instr: BrilInstr,
+    var2p: Map<String, Int>,
+    p2var: Map<Int, String>,
+): BrilInstr {
+    return if (instr is BrilPrintOp) {
+        instr.copy(
+            args = instr.args?.map {
+                val p = var2p.get(it)
+                if (p != null) {
+                    p2var.get(p)!!
+                } else {
+                    it
+                }
+            }
+        )
+    } else if (instr is BrilCallOp) {
+        instr.copy(
+            args = instr.args?.map {
+                val p = var2p.get(it)
+                if (p != null) {
+                    p2var.get(p)!!
+                } else {
+                    it
+                }
+            }
+        )
+    } else if (instr is BrilIdOp) {
+        instr.copy(
+            arg = instr.arg.let {
+                val p = var2p.get(it)
+                if (p != null) {
+                    p2var.get(p)!!
+                } else {
+                    it
+                }
+            }
+        )
+    } else {
+        instr
+    }
+}
+
 fun lvn(
     block: Block
 ) : Block {
@@ -624,37 +667,12 @@ fun lvn(
     }
     val res = Block()
     block.forEachIndexed { i, instr -> 
-        val instr = if (!p2val.contains(i)) {
-            if (instr is BrilPrintOp) {
-                instr.copy(
-                    args = instr.args?.map {
-                        val p = var2p.get(it)
-                        if (p != null) {
-                            p2var.get(p)!!
-                        } else {
-                            it
-                        }
-                    }
-                )
-            } else if (instr is BrilCallOp) {
-                instr.copy(
-                    args = instr.args?.map {
-                        val p = var2p.get(it)
-                        if (p != null) {
-                            p2var.get(p)!!
-                        } else {
-                            it
-                        }
-                    }
-                )
-            } else {
-                instr
-            }
+        val next = if (!p2val.contains(i)) {
+             replaceArgs(instr, var2p, p2var)
         } else {
-            // println("$i ${p2val.get(i)!!}")
-            p2val.get(i)!!.toInstr(instr, i, p2var)   
+             p2val.get(i)!!.toInstr(instr, i, p2var)   
         }
-        res.add(instr)
+        res.add(next)
     }
     return res
 }
@@ -768,7 +786,13 @@ fun lvn(
 ): BrilFunction {
     val blocks = blocks(function)
     val nblocks = blocks.map { b -> 
-        lvn(b)
+        var curr = b
+        var prev: Block? = null
+        while (prev != curr) {
+            prev = curr
+            curr = lvn(prev)
+        }
+        curr
     }
 
     return function.copy(
