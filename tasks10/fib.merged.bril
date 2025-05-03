@@ -1,0 +1,47 @@
+## ARGS 10
+@main(n: int) {
+.entry:
+    zero: int = const 0;
+    one: int = const 1;
+    a: int = const 0;
+    b: int = const 1;
+    i: int = id n;
+    jmp .merged;
+.cond:
+    g: bool = gt i zero;
+    br g .body .exit;
+.body:
+    temp: int = id a;
+    a: int = id b;
+    b: int = add temp a;
+    i: int = sub i one;
+    jmp .cond;
+.merged:
+    speculate;
+    g: bool = gt i zero;
+    temp: int = id a;
+    a: int = id b;
+    b: int = add temp a;
+    i: int = sub i one;
+    g: bool = gt i zero;
+    temp: int = id a;
+    a: int = id b;
+    b: int = add temp a;
+    i: int = sub i one;
+    g: bool = gt i zero;
+    temp: int = id a;
+    a: int = id b;
+    b: int = add temp a;
+    i: int = sub i one;
+    g: bool = gt i zero;
+    temp: int = id a;
+    a: int = id b;
+    b: int = add temp a;
+    i: int = sub i one;
+    c0: bool = id g;
+    guard c0 .cond;
+    commit;
+    jmp .merged;
+.exit:
+    print a;
+}

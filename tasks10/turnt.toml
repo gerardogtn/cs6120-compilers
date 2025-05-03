@@ -1,0 +1,23 @@
+[envs.compare]
+command = "bril2json < {filename} | brili {args} "
+output.out = "-"
+
+[envs.trace]
+command = "bril2json < {filename} | deno run brili.ts -t {args}"
+output.trace = "-"
+
+[envs.prof]
+command = "bril2json < {filename} | deno run brili.ts -p {args}"
+output.prof = "2"
+
+[envs.unrolled]
+command = "bril2json < {filename} | ./run.sh core/{base}.trace | bril2txt"
+output.unrolled = "-"
+
+[envs.unrolled_compare]
+command = "bril2json < core/{base}.unrolled | brili {args}"
+output.out = "-"
+
+[envs.unrolled_prof]
+command = "bril2json < core/{base}.unrolled | brili -p {args}"
+output.prof = "2"

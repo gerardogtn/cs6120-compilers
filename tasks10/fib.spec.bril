@@ -1,0 +1,21 @@
+## ARGS 10
+@main(n: int) {
+.entry:
+    zero: int = const 0;
+    one: int = const 1;
+    a: int = const 0;
+    b: int = const 1;
+    i: int = id n;
+.l0:
+    speculate;
+    g: bool = gt i zero;
+    temp: int = id a;
+    a: int = id b;
+    b: int = add temp a;
+    i: int = sub i one;
+    guard g .l1;
+    commit;
+    jmp .l0;
+.l1:
+   print a;
+}
