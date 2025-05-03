@@ -1,0 +1,10 @@
+[
+  [
+    "while.body",
+    "while.cond",
+    "while.finish",
+    "for.cond",
+    "for.body",
+    "gcd"
+  ]
+]

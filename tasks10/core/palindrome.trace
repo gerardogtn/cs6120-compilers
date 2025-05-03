@@ -1,0 +1,17 @@
+[
+  [ "for.body.pow", "if.false.pow", "for.cond.pow" ],
+  [
+    "if.true.pow",
+    "for.cond.pow",
+    "for.end.pow",
+    "if.true.mirror",
+    "if.false.palindrome",
+    "for.body.pow",
+    "if.false.pow",
+    "for.cond.pow",
+    "for.body.pow",
+    "if.false.pow",
+    "for.cond.pow",
+    "for.body.pow"
+  ]
+]

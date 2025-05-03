@@ -1,0 +1,25 @@
+@main(input: int) {
+.syntactic_entry:
+  sum: int = const 0;
+  two: int = const 2;
+  zero: int = const 0;
+.loop:
+  cond: bool = eq input zero;
+  br cond .done .body;
+.body:
+  bit: int = call @mod input two;
+  input: int = div input two;
+  sum: int = add sum bit;
+  jmp .loop;
+.done:
+  print sum;
+  ret;
+}
+@mod(dividend: int, divisor: int): int {
+.syntactic_entry:
+  quotient: int = div dividend divisor;
+  two: int = const 2;
+  prod: int = mul two quotient;
+  diff: int = sub dividend prod;
+  ret diff;
+}

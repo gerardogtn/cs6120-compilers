@@ -1,0 +1,29 @@
+[
+  [
+    "for.outer.cond",
+    "for.outer.body",
+    "for.inner.body",
+    "if.inner.end",
+    "for.inner.cond",
+    "for.inner.body",
+    "if.inner.end",
+    "for.inner.cond",
+    "for.inner.end",
+    "if.outer.body"
+  ],
+  [
+    "if.inner.body",  "for.inner.end",
+    "if.outer.end",   "for.outer.cond",
+    "for.outer.body", "for.inner.body",
+    "if.inner.end",   "for.inner.cond",
+    "for.inner.body", "if.inner.end",
+    "for.inner.cond", "for.inner.body",
+    "if.inner.end",   "for.inner.cond",
+    "for.inner.body", "if.inner.end",
+    "for.inner.cond", "for.inner.body",
+    "if.inner.end",   "for.inner.cond",
+    "for.inner.end",  "if.outer.body",
+    "for.outer.cond", "for.outer.body",
+    "for.inner.body"
+  ]
+]

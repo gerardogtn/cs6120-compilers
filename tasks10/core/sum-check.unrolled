@@ -1,0 +1,52 @@
+@main(n: int) {
+.syntactic_entry:
+  first: int = call @sum_by_loop n;
+  second: int = call @sum_by_formula n;
+  isSame: bool = eq first second;
+  print first;
+  print second;
+  print isSame;
+  ret;
+}
+@sum_by_loop(n: int): int {
+.syntactic_entry:
+  one: int = const 1;
+  sum: int = const 0;
+  i: int = const 1;
+.for_start:
+  con: bool = le i n;
+  br con .for .end;
+.for:
+  sum: int = add sum i;
+  i: int = add i one;
+  jmp .__merged;
+.end:
+  ret sum;
+.__merged:
+  speculate;
+  con: bool = le i n;
+  sum: int = add sum i;
+  i: int = add i one;
+  con: bool = le i n;
+  sum: int = add sum i;
+  i: int = add i one;
+  con: bool = le i n;
+  sum: int = add sum i;
+  i: int = add i one;
+  con: bool = le i n;
+  sum: int = add sum i;
+  i: int = add i one;
+  guard con .for_start;
+  commit;
+  jmp .__merged;
+  ret;
+}
+@sum_by_formula(n: int): int {
+.syntactic_entry:
+  one: int = const 1;
+  two: int = const 2;
+  n_1: int = add one n;
+  multi: int = mul n_1 n;
+  sum: int = div multi two;
+  ret sum;
+}

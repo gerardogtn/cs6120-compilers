@@ -1,0 +1,12 @@
+[
+  [ "inner_continue", "inner_loop" ],
+  [
+    "outer_continue", "outer_loop",
+    "inner_continue", "inner_loop",
+    "inner_continue", "inner_loop",
+    "inner_continue", "inner_loop",
+    "inner_continue", "inner_loop",
+    "inner_continue", "inner_loop",
+    "inner_continue"
+  ]
+]
