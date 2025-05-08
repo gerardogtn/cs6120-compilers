@@ -62,34 +62,41 @@ fun isLoopHeader(
     }
 }
 
-typealias Context = List<Int>
+sealed interface ContainingSyntax
+data class LoopHeadedBy(val node: DTree) : ContainingSyntax
+data object IfThenElse : ContainingSyntax
+
+typealias Context = List<ContainingSyntax>
 fun doTree(
     node: DTree,
     rpo: Rpo,
     preds: Predecessors,
     blocks: Blocks,
     context: Context,
-) {
+): List<BriloopInstr> {
     val (x, children) = node
-    val ctxt0 = children.filter { (bid, _) -> isMergeNode(bid, rpo, preds) }.map { it.bid } 
-    val codeForX = nodeWithin(x, ctxt0, blocks)
-    if (isLoopHeader(x, rpo, preds)) {
-        val ctxt1 = listOf(x) + context
+    val ctxt0 = children.filter { (bid, _) -> isMergeNode(bid, rpo, preds) }
+    val codeForX = nodeWithin(x, ctxt0, rpo, preds, blocks)
+    val instr: List<BriloopInstr> = if (isLoopHeader(x, rpo, preds)) {
+        val ctxt1 = listOf(LoopHeadedBy(node)) + context
         BriloopWhileStmt(
             arg = "t",
             body = codeForX(ctxt1),
-        )
+        ).let { listOf(it) }
     } else {
-        codeForX (context)
+        codeForX(context)
     }
+    return instr
 }
 
 fun nodeWithin(
     bid: Int,
-    ctxt: Context,
+    nodes: List<DTree>,
+    rpo: Rpo,
+    preds: Predecessors,
     blocks: Blocks,
 ): (Context) -> List<BriloopInstr> {
-    fun base() = { context: Context -> 
+    fun base(): (Context) -> List<BriloopInstr> = { context: Context -> 
         val brilInstrs = blocks[bid]!!
         val briloopInstrs = LinkedList<BriloopInstr>()
         for (i in 0 ..< brilInstrs.size - 1) {
@@ -106,8 +113,8 @@ fun nodeWithin(
         } else if (lastBrilInstr is BrilBrOp) {
             BriloopIfThenStmt(
                 arg = lastBrilInstr.arg,
-                tru = doBranch(bid, lastBrilInstr.labelL, listOf(-1) + context),
-                fals = doBranch(bid, lastBrilInstr.labelR, listOf(-1) + context),
+                tru = doBranch(bid, lastBrilInstr.labelL, listOf(IfThenElse) + context),
+                fals = doBranch(bid, lastBrilInstr.labelR, listOf(IfThenElse) + context),
             ).let { listOf<BriloopInstr>(it) }
         } else if (lastBrilInstr is BrilRetOp) {
             BriloopOp(
@@ -124,7 +131,18 @@ fun nodeWithin(
 
         briloopInstrs + next
     }
-    return { ctxt -> emptyList() } 
+    fun inductive(): (Context) -> List<BriloopInstr> = { context: Context -> 
+        listOf<BriloopInstr>(
+            BriloopBlockStmt(
+                body = nodeWithin(bid, nodes.drop(1), rpo, preds, blocks)(listOf(LoopHeadedBy(nodes.first())) + context)
+            )
+        ) + doTree(nodes.first(), rpo, preds, blocks, context)
+    }
+    return if (nodes.isEmpty()) {
+        base()
+    } else {
+        inductive()
+    }
 }
 
 fun doBranch(
