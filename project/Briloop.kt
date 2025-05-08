@@ -23,11 +23,11 @@ sealed interface BriloopInstr
 
 data class BriloopOp(
     val op: String,
-    val args: List<String>,
+    val args: List<String>?,
     val value: BriloopValue?,
     val dest: String?,
     val type: BriloopType?,
-    val funcs: List<String>,
+    val funcs: List<String>?,
 ) : BriloopInstr
 
 sealed interface BriloopStmt : BriloopInstr
@@ -54,6 +54,10 @@ data class BriloopWhileStmt(
     val body: List<BriloopInstr>,
 ) : BriloopStmt
 
+data class BriloopBlockStmt(
+    val body: List<BriloopInstr>,
+) : BriloopStmt
+
 data class BriloopInstrJson(
     val op: String,
     val dest: String?,
@@ -76,6 +80,12 @@ class BriloopInstrAdapter {
         }
 
         return when(json.op) {
+            "block" -> BriloopBlockStmt(
+                body = json.children!!.first().mapNotNull {
+                    val briloopinstr: BriloopInstr? = fromJson(it)
+                    briloopinstr
+                },
+            )
             "while" -> BriloopWhileStmt(
                 arg = json.args!!.first(),
                 body = json.children!!.first().mapNotNull { 
@@ -120,6 +130,16 @@ class BriloopInstrAdapter {
                 funcs = instr.funcs,
                 labels = null,
                 children = null
+            )
+            is BriloopBlockStmt -> BriloopInstrJson(
+                op = "while",
+                dest = null,
+                type = null,
+                value = null,
+                args =  null,
+                funcs = null,
+                labels = null,
+                children = listOf(instr.body.mapNotNull { toJson(it) })
             )
             is BriloopWhileStmt -> BriloopInstrJson(
                 op = "while",
@@ -182,3 +202,37 @@ class BriloopInstrAdapter {
 }
 
 
+fun BrilInstr.toBriloop(): BriloopInstr? {
+    val brilOp = this as? BrilOp
+    if (brilOp == null) {
+        return null
+    }
+
+    val adapter = BrilOpAdapter()
+    val briljson = adapter.toJson(brilOp)
+    return BriloopOp(
+        op = briljson.op,
+        args = briljson.args,
+        funcs = briljson.funcs,
+        value = briljson.value.toBriloop(),
+        dest = briljson.dest,
+        type = briljson.type.toBriloop(),
+    )
+}
+
+fun BrilType?.toBriloop(): BriloopType? {
+    return when (this) {
+        is BrilPrimitiveType -> BriloopPrimitiveType(this.name)
+        is BrilParameterizedType -> BriloopParameterizedType(this.map)
+        else -> null
+    }
+}
+
+fun BrilPrimitiveValueType?.toBriloop(): BriloopValue? {
+    return when (this) {
+        is BrilPrimitiveValueBool -> BriloopValueBoolean(this.value)
+        is BrilPrimitiveValueInt -> BriloopValueInt(this.value)
+        is BrilPrimitiveValueDouble -> BriloopValueDouble(this.value)
+        else -> null
+    }
+}
