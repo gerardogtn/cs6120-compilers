@@ -12,6 +12,9 @@ fun moshi(): Moshi {
         .add(BrilTypeAdapter())
         .add(BrilInstrAdapter())
         .add(BrilOpAdapter())
+        .add(BriloopInstrAdapter())
+        .add(BriloopTypeAdapter())
+        .add(BriloopValueAdapter())
         .addLast(KotlinJsonAdapterFactory())
         .build()
 }

@@ -1,2 +1,2 @@
 echo "starting"
-cat fib.bril | bril2json | ./run.sh
+cat fib.bril | bril2json | ./run.sh | jq . -S

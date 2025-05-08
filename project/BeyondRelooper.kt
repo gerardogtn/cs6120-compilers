@@ -73,16 +73,27 @@ fun doTree(
     preds: Predecessors,
     blocks: Blocks,
     context: Context,
+    labelToBlock: LabelToBlock,
 ): List<BriloopInstr> {
     val (x, children) = node
-    val ctxt0 = children.filter { (bid, _) -> isMergeNode(bid, rpo, preds) }
-    val codeForX = nodeWithin(x, ctxt0, rpo, preds, blocks)
+    val mergeNodes = children.filter { (bid, _) -> isMergeNode(bid, rpo, preds) }
+    val codeForX = nodeWithin(node, mergeNodes, rpo, preds, blocks, labelToBlock)
     val instr: List<BriloopInstr> = if (isLoopHeader(x, rpo, preds)) {
         val ctxt1 = listOf(LoopHeadedBy(node)) + context
-        BriloopWhileStmt(
-            arg = "t",
+        val name = generateVariableName()
+        val arg = BriloopOp(
+            op = "const",
+            value = BriloopValueBoolean(true),
+            type = BriloopPrimitiveType("bool"),
+            dest = name,
+            args = null,
+            funcs = null,
+        )
+        val whil = BriloopWhileStmt(
+            arg = name,
             body = codeForX(ctxt1),
-        ).let { listOf(it) }
+        )
+        listOf(arg, whil)
     } else {
         codeForX(context)
     }
@@ -90,13 +101,15 @@ fun doTree(
 }
 
 fun nodeWithin(
-    bid: Int,
+    node: DTree,
     nodes: List<DTree>,
     rpo: Rpo,
     preds: Predecessors,
     blocks: Blocks,
+    labelToBlock: LabelToBlock,
 ): (Context) -> List<BriloopInstr> {
     fun base(): (Context) -> List<BriloopInstr> = { context: Context -> 
+        val bid = node.bid
         val brilInstrs = blocks[bid]!!
         val briloopInstrs = LinkedList<BriloopInstr>()
         for (i in 0 ..< brilInstrs.size - 1) {
@@ -109,12 +122,12 @@ fun nodeWithin(
         val lastBrilInstr = brilInstrs[brilInstrs.size - 1]!!
         
         val next: List<BriloopInstr> = if (lastBrilInstr is BrilJmpOp) {
-            doBranch(bid, lastBrilInstr.label, context)
+            doBranch(node, lastBrilInstr.label, context, labelToBlock, rpo, preds, blocks)
         } else if (lastBrilInstr is BrilBrOp) {
             BriloopIfThenStmt(
                 arg = lastBrilInstr.arg,
-                tru = doBranch(bid, lastBrilInstr.labelL, listOf(IfThenElse) + context),
-                fals = doBranch(bid, lastBrilInstr.labelR, listOf(IfThenElse) + context),
+                tru = doBranch(node, lastBrilInstr.labelL, listOf(IfThenElse) + context, labelToBlock, rpo, preds, blocks),
+                fals = doBranch(node, lastBrilInstr.labelR, listOf(IfThenElse) + context, labelToBlock, rpo, preds, blocks),
             ).let { listOf<BriloopInstr>(it) }
         } else if (lastBrilInstr is BrilRetOp) {
             BriloopOp(
@@ -134,9 +147,9 @@ fun nodeWithin(
     fun inductive(): (Context) -> List<BriloopInstr> = { context: Context -> 
         listOf<BriloopInstr>(
             BriloopBlockStmt(
-                body = nodeWithin(bid, nodes.drop(1), rpo, preds, blocks)(listOf(LoopHeadedBy(nodes.first())) + context)
+                body = nodeWithin(node, nodes.drop(1), rpo, preds, blocks, labelToBlock)(listOf(LoopHeadedBy(nodes.first())) + context)
             )
-        ) + doTree(nodes.first(), rpo, preds, blocks, context)
+        ) + doTree(nodes.first(), rpo, preds, blocks, context, labelToBlock)
     }
     return if (nodes.isEmpty()) {
         base()
@@ -145,70 +158,149 @@ fun nodeWithin(
     }
 }
 
+var i = 0
+fun generateVariableName(): String {
+    val name = "__v$i"
+    i = i + 1
+    return name
+}
+
 fun doBranch(
-    bid: Int,
+    node: DTree,
     label: String,
     ctxt: Context,
+    labelToBlock: LabelToBlock,
+    rpo: Rpo,
+    preds: Predecessors,
+    blocks: Blocks,
 ) : List<BriloopInstr> {
+    val (bid, children) = node
+    val target = labelToBlock[label]!!
 
-    return emptyList()
+    // is backward edge
+    return if (rpo[target]!! < rpo[bid]!!) {
+        val name = generateVariableName()
+        val i =  ctxt.indexOfFirst { (it is LoopHeadedBy) && (it.node.bid == target) }
+        val ival = BriloopValueInt(i)
+        val iOp= BriloopOp(
+            op = "const",
+            value = ival,
+            type  = BriloopPrimitiveType("int"),
+            dest = name,
+            args = null,
+            funcs = null,
+        )
+        val brStmt = BriloopBreakStmt(
+            arg = name,
+        )
+        listOf(
+            iOp,
+            brStmt,
+        )
+    // is Merge Label
+    } else if (isMergeNode(target, rpo, preds)) {
+        val name = generateVariableName()
+        val i =  ctxt.indexOfFirst { (it is LoopHeadedBy) && (it.node.bid == target) }
+        val ival = BriloopValueInt(i)
+        val iOp= BriloopOp(
+            op = "const",
+            value = ival,
+            type  = BriloopPrimitiveType("int"),
+            dest = name,
+            args = null,
+            funcs = null,
+        )
+        val brStmt = BriloopBreakStmt(
+            arg = name,
+        )
+        listOf(
+            iOp,
+            brStmt,
+        )
+    } else {
+        doTree(
+            node = children.first { it.bid == target } ,
+            rpo = rpo,
+            preds = preds,
+            blocks = blocks,
+            context = ctxt,
+            labelToBlock = labelToBlock,
+        )
+    }
 }
 
 fun beyondRelooper(
     func: BrilFunction
-): BrilFunction {
+): BriloopFunction {
     val (blocks, cfg) = cfg(func)
     val preds = predecessors(cfg)
-    println("Preds")
-    preds.forEach { println(it) }
+    System.err.println("Preds")
+    preds.forEach { System.err.println(it) }
     val doms = doms(blocks, cfg)
     val sdoms = flip_doms(doms)
     val idoms = idomsSearch(sdoms)
 
     val tree = dtree(idoms)
-    println("dom tree")
-    println(tree)
+    System.err.println("dom tree")
+    System.err.println(tree)
 
     val rpo = reversePostOrder(cfg)
-    println("Rpo")
-    println(rpo)
+    System.err.println("Rpo")
+    System.err.println(rpo)
+    
+    val labelToBlock = labelToBlock(blocks)
 
-    println("Merge nodes")
+    System.err.println("Merge nodes")
     for (i in 0 ..< cfg.size) {
         val text = if (isMergeNode(i, rpo, preds)) {
             " is a merge node"
         } else {
             " is NOT a merge node"
         }
-        println("Block $i $text")
+        System.err.println("Block $i $text")
     }
 
-    println("Loop headers")
+    System.err.println("Loop headers")
     for (i in 0 ..< cfg.size) {
         val text = if (isLoopHeader(i, rpo, preds)) {
             " is a loop header node"
         } else {
             " is NOT a loop header node"
         }
-        println("Block $i $text")
+        System.err.println("Block $i $text")
     }
+    val brilooped = doTree(tree, rpo, preds, blocks, emptyList(), labelToBlock)
 
-
-    return func
+    return BriloopFunction(
+        name = func.name,
+        args = func.args?.map { 
+            val arg: BriloopArg = it.toBriloop()
+            arg
+        },
+        type = func.type.toBriloop(),
+        instrs = brilooped,
+    )
 }
 
 @kotlin.ExperimentalStdlibApi
 fun main(args: Array<String>) {
     System.err.println("beyond relooper")
     val moshi = moshi()
-    val programAdapter = brilProgram(args, moshi)
-    if (programAdapter == null) {
+    val brilAdapterProgram = brilProgram(args, moshi)
+    if (brilAdapterProgram == null) {
         System.err.println("No program found")
         return
     }
 
-    val (adapter, program) = programAdapter
-    program.functions.forEach { func -> 
+    val (_, brilProgram) = brilAdapterProgram
+    val briloopFuncs = brilProgram.functions.map { func -> 
         beyondRelooper(func)
     }
+    val briloopProgram = BriloopProgram(
+        functions = briloopFuncs,
+    )
+    val briloopAdapter = moshi.adapter<BriloopProgram>()
+    val json = briloopAdapter.toJson(briloopProgram)
+
+    println(json)
 }

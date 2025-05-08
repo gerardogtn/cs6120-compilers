@@ -9,14 +9,14 @@ data class BriloopProgram(
 
 data class BriloopFunction(
     val name: String,
-    val args: List<BriloopArg>,
-    val type: BriloopType,
-    val instrs: BriloopInstr,
+    val args: List<BriloopArg>?,
+    val type: BriloopType?,
+    val instrs: List<BriloopInstr>,
 )
 
 data class BriloopArg(
     val name: String,
-    val type: BriloopType,
+    val type: BriloopType?,
 )
 
 sealed interface BriloopInstr
@@ -201,6 +201,12 @@ class BriloopInstrAdapter {
     }
 }
 
+fun BrilArg.toBriloop(): BriloopArg {
+    return BriloopArg(
+        name = this.name,
+        type = this.type.toBriloop()
+    )
+}
 
 fun BrilInstr.toBriloop(): BriloopInstr? {
     val brilOp = this as? BrilOp

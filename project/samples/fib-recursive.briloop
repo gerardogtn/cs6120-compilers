@@ -1,0 +1,21 @@
+# ARGS 10
+@main(n: int) {
+    zero: int = const 0;
+    one: int = const 1;
+    r: int = call @fib-recursive n zero one;
+    print r;
+}
+
+@fib-recursive(n: int, a: int, b: int) {
+    zero: int = const 0;
+    one: int = const 1;
+    cond: bool = le n zero;
+    if (cond) then {
+        ret a;   
+    } else {
+        temp: int = add a b;
+        n: int = sub n one;
+        res: int = call @fib-recursive n b temp;
+        ret res;
+    };
+}
