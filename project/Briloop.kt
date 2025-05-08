@@ -132,7 +132,7 @@ class BriloopInstrAdapter {
                 children = null
             )
             is BriloopBlockStmt -> BriloopInstrJson(
-                op = "while",
+                op = "block",
                 dest = null,
                 type = null,
                 value = null,

@@ -89,6 +89,7 @@ fun doTree(
             args = null,
             funcs = null,
         )
+        System.err.println("Creating while for $name")
         val whil = BriloopWhileStmt(
             arg = name,
             body = codeForX(ctxt1),
@@ -122,12 +123,12 @@ fun nodeWithin(
         val lastBrilInstr = brilInstrs[brilInstrs.size - 1]!!
         
         val next: List<BriloopInstr> = if (lastBrilInstr is BrilJmpOp) {
-            doBranch(node, lastBrilInstr.label, context, labelToBlock, rpo, preds, blocks)
+            doBranch(node, labelToBlock[lastBrilInstr.label]!!, context, labelToBlock, rpo, preds, blocks)
         } else if (lastBrilInstr is BrilBrOp) {
             BriloopIfThenStmt(
                 arg = lastBrilInstr.arg,
-                tru = doBranch(node, lastBrilInstr.labelL, listOf(IfThenElse) + context, labelToBlock, rpo, preds, blocks),
-                fals = doBranch(node, lastBrilInstr.labelR, listOf(IfThenElse) + context, labelToBlock, rpo, preds, blocks),
+                tru = doBranch(node, labelToBlock[lastBrilInstr.labelL]!!, listOf(IfThenElse) + context, labelToBlock, rpo, preds, blocks),
+                fals = doBranch(node, labelToBlock[lastBrilInstr.labelR]!!, listOf(IfThenElse) + context, labelToBlock, rpo, preds, blocks),
             ).let { listOf<BriloopInstr>(it) }
         } else if (lastBrilInstr is BrilRetOp) {
             BriloopOp(
@@ -139,7 +140,9 @@ fun nodeWithin(
                 funcs = null,
             ).let{ it -> listOf<BriloopInstr>(it) }
         } else {
-            throw IllegalStateException("Unexpected last node of block $lastBrilInstr")
+            briloopInstrs.add(lastBrilInstr.toBriloop()!!)
+            doBranch(node, node.bid + 1, context, labelToBlock, rpo, preds, blocks) 
+            //throw IllegalStateException("Unexpected last node of block $lastBrilInstr")
         }
 
         briloopInstrs + next
@@ -167,7 +170,7 @@ fun generateVariableName(): String {
 
 fun doBranch(
     node: DTree,
-    label: String,
+    nextbid: Int,
     ctxt: Context,
     labelToBlock: LabelToBlock,
     rpo: Rpo,
@@ -175,27 +178,23 @@ fun doBranch(
     blocks: Blocks,
 ) : List<BriloopInstr> {
     val (bid, children) = node
-    val target = labelToBlock[label]!!
+    val target = nextbid 
 
     // is backward edge
     return if (rpo[target]!! < rpo[bid]!!) {
         val name = generateVariableName()
         val i =  ctxt.indexOfFirst { (it is LoopHeadedBy) && (it.node.bid == target) }
         val ival = BriloopValueInt(i)
-        val iOp= BriloopOp(
-            op = "const",
-            value = ival,
-            type  = BriloopPrimitiveType("int"),
-            dest = name,
+        val cont = BriloopOp(
+            op = "continue",
+            value = null,
+            type = null,
+            dest = null,
             args = null,
             funcs = null,
         )
-        val brStmt = BriloopBreakStmt(
-            arg = name,
-        )
-        listOf(
-            iOp,
-            brStmt,
+       listOf(
+           cont
         )
     // is Merge Label
     } else if (isMergeNode(target, rpo, preds)) {
