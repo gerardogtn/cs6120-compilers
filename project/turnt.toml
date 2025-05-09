@@ -5,3 +5,7 @@ output.out = "-"
 [envs.briloop]
 command = "bril2json < {filename} | ./run.sh | briloop2txt"
 output.briloop = "-"
+
+[envs.verify]
+command = "bril2json < {filename} | ./run.sh | deno run $BRIL/brili.ts {args}"
+output.out = "-"

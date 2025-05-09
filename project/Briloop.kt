@@ -43,10 +43,12 @@ data class BriloopIfThenStmt(
     val fals: List<BriloopInstr>,
 ) : BriloopStmt
 
-data object BriloopContinueStmt : BriloopStmt
+data class BriloopContinueStmt(
+    val value: BriloopValue?,
+) : BriloopStmt
 
 data class BriloopBreakStmt(
-    val arg: String?,
+    val value: BriloopValue?,
 ) : BriloopStmt
 
 data class BriloopWhileStmt(
@@ -101,9 +103,11 @@ class BriloopInstrAdapter {
                     briloopinstr
                 }.orEmpty(),
             )
-            "continue" -> BriloopContinueStmt
+            "continue" -> BriloopContinueStmt(
+                value = json.value,
+            )
             "break" -> BriloopBreakStmt(
-                arg = json.args?.firstOrNull(),
+                value = json.value,
             )
             else -> BriloopOp(
                 op = json.op,
@@ -180,7 +184,7 @@ class BriloopInstrAdapter {
                 op = "continue",
                 dest = null,
                 type = null, 
-                value = null,
+                value = instr.value,
                 args = null,
                 funcs = null,
                 labels = null,
@@ -190,8 +194,8 @@ class BriloopInstrAdapter {
                 op = "break",
                 dest = null,
                 type = null,
-                value = null,
-                args = listOfNotNull(instr.arg),
+                value = instr.value,
+                args = null,
                 funcs = null,
                 labels = null,
                 children = null,

@@ -4,6 +4,13 @@ import java.util.LinkedList
 import java.util.TreeSet
 import java.util.TreeMap
 
+fun log(s: String) {
+    val logEnabled = false
+    if (logEnabled) {
+        System.err.println(s)
+    }
+}
+
 // A map from block id to it's reverse post order. 
 typealias Rpo = TreeMap<Int, Int>
 fun reversePostOrder(
@@ -64,7 +71,6 @@ fun isLoopHeader(
 
 sealed interface ContainingSyntax
 data class LoopHeadedBy(val node: DTree) : ContainingSyntax
-data object IfThenElse : ContainingSyntax
 
 typealias Context = List<ContainingSyntax>
 fun doTree(
@@ -89,7 +95,7 @@ fun doTree(
             args = null,
             funcs = null,
         )
-        System.err.println("Creating while for $name")
+        log("Creating while for $name")
         val whil = BriloopWhileStmt(
             arg = name,
             body = codeForX(ctxt1),
@@ -127,8 +133,8 @@ fun nodeWithin(
         } else if (lastBrilInstr is BrilBrOp) {
             BriloopIfThenStmt(
                 arg = lastBrilInstr.arg,
-                tru = doBranch(node, labelToBlock[lastBrilInstr.labelL]!!, listOf(IfThenElse) + context, labelToBlock, rpo, preds, blocks),
-                fals = doBranch(node, labelToBlock[lastBrilInstr.labelR]!!, listOf(IfThenElse) + context, labelToBlock, rpo, preds, blocks),
+                tru = doBranch(node, labelToBlock[lastBrilInstr.labelL]!!,  context, labelToBlock, rpo, preds, blocks),
+                fals = doBranch(node, labelToBlock[lastBrilInstr.labelR]!!, context, labelToBlock, rpo, preds, blocks),
             ).let { listOf<BriloopInstr>(it) }
         } else if (lastBrilInstr is BrilRetOp) {
             BriloopOp(
@@ -142,7 +148,7 @@ fun nodeWithin(
         } else {
             val lastBriloopInstr = lastBrilInstr.toBriloop()
             if (lastBriloopInstr == null) {
-                System.err.println("Couldn't translate $lastBrilInstr")
+                log("Couldn't translate $lastBrilInstr")
             } else {
                 briloopInstrs.add(lastBriloopInstr)
             }
@@ -190,13 +196,8 @@ fun doBranch(
         val name = generateVariableName()
         val i =  ctxt.indexOfFirst { (it is LoopHeadedBy) && (it.node.bid == target) }
         val ival = BriloopValueInt(i)
-        val cont = BriloopOp(
-            op = "continue",
-            value = null,
-            type = null,
-            dest = null,
-            args = null,
-            funcs = null,
+        val cont = BriloopContinueStmt(
+            value = ival,
         )
        listOf(
            cont
@@ -206,19 +207,10 @@ fun doBranch(
         val name = generateVariableName()
         val i =  ctxt.indexOfFirst { (it is LoopHeadedBy) && (it.node.bid == target) }
         val ival = BriloopValueInt(i)
-        val iOp= BriloopOp(
-            op = "const",
-            value = ival,
-            type  = BriloopPrimitiveType("int"),
-            dest = name,
-            args = null,
-            funcs = null,
-        )
         val brStmt = BriloopBreakStmt(
-            arg = name,
+            value = ival,
         )
         listOf(
-            iOp,
             brStmt,
         )
     } else {
@@ -238,40 +230,40 @@ fun beyondRelooper(
 ): BriloopFunction {
     val (blocks, cfg) = cfg(func)
     val preds = predecessors(cfg)
-    System.err.println("Preds")
-    preds.forEach { System.err.println(it) }
+    log("Preds")
+    preds.forEach { log(it.toString()) }
     val doms = doms(blocks, cfg)
     val sdoms = flip_doms(doms)
     val idoms = idomsSearch(sdoms)
 
     val tree = dtree(idoms)
-    System.err.println("dom tree")
-    System.err.println(tree)
+    log("dom tree")
+    log(tree.toString())
 
     val rpo = reversePostOrder(cfg)
-    System.err.println("Rpo")
-    System.err.println(rpo)
+    log("Rpo")
+    log(rpo.toString())
     
     val labelToBlock = labelToBlock(blocks)
 
-    System.err.println("Merge nodes")
+    log("Merge nodes")
     for (i in 0 ..< cfg.size) {
         val text = if (isMergeNode(i, rpo, preds)) {
             " is a merge node"
         } else {
             " is NOT a merge node"
         }
-        System.err.println("Block $i $text")
+        log("Block $i $text")
     }
 
-    System.err.println("Loop headers")
+    log("Loop headers")
     for (i in 0 ..< cfg.size) {
         val text = if (isLoopHeader(i, rpo, preds)) {
             " is a loop header node"
         } else {
             " is NOT a loop header node"
         }
-        System.err.println("Block $i $text")
+        log("Block $i $text")
     }
     val brilooped = doTree(tree, rpo, preds, blocks, emptyList(), labelToBlock)
 
@@ -288,11 +280,11 @@ fun beyondRelooper(
 
 @kotlin.ExperimentalStdlibApi
 fun main(args: Array<String>) {
-    System.err.println("beyond relooper")
+    log("beyond relooper")
     val moshi = moshi()
     val brilAdapterProgram = brilProgram(args, moshi)
     if (brilAdapterProgram == null) {
-        System.err.println("No program found")
+        log("No program found")
         return
     }
 
