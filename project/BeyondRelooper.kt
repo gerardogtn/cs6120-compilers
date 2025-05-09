@@ -140,7 +140,12 @@ fun nodeWithin(
                 funcs = null,
             ).let{ it -> listOf<BriloopInstr>(it) }
         } else {
-            briloopInstrs.add(lastBrilInstr.toBriloop()!!)
+            val lastBriloopInstr = lastBrilInstr.toBriloop()
+            if (lastBriloopInstr == null) {
+                System.err.println("Couldn't translate $lastBrilInstr")
+            } else {
+                briloopInstrs.add(lastBriloopInstr)
+            }
             doBranch(node, node.bid + 1, context, labelToBlock, rpo, preds, blocks) 
             //throw IllegalStateException("Unexpected last node of block $lastBrilInstr")
         }
