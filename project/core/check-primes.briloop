@@ -18,22 +18,20 @@
           v9: int = const 1;
           print v9;
           v10: int = const 0;
-          __v1: int = const 1;
-          break __v1;
+          break 0;
         }
         else {
           v11: int = const 0;
           print v11;
           v12: int = const 0;
-          __v2: int = const 1;
-          break __v2;
+          break 0;
         }
       }
       v13: int = id i;
       v14: int = const 1;
       v15: int = add v13 v14;
       i: int = id v15;
-      continue;
+      continue 0;
     }
     else {
       ret;
@@ -80,7 +78,7 @@
           v22: int = const 1;
           v23: int = add v21 v22;
           i: int = id v23;
-          continue;
+          continue 0;
         }
       }
       else {

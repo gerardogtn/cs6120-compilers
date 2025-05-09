@@ -18,7 +18,7 @@
     then {
       sum: int = add sum i;
       i: int = add i one;
-      continue;
+      continue 0;
     }
     else {
       ret sum;

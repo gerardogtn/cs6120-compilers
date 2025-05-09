@@ -5,12 +5,10 @@
     if v4
     then {
       greater: int = id x;
-      __v0: int = const 1;
-      break __v0;
+      break 0;
     }
     else {
-      __v1: int = const 1;
-      break __v1;
+      break 0;
     }
   }
   __v2: bool = const true;
@@ -29,7 +27,7 @@
     else {
       one: int = const 1;
       greater: int = add greater one;
-      continue;
+      continue 0;
     }
   }
 }

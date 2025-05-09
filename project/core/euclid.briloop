@@ -52,7 +52,7 @@
       cond_temp: bool = id v14;
       v15: bool = not cond_temp;
       cond: bool = id v15;
-      continue;
+      continue 0;
     }
     else {
       v16: int = id a;

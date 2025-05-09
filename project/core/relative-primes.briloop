@@ -27,12 +27,10 @@
       a: int = id v5;
       v6: int = id tmp;
       b: int = id v6;
-      __v0: int = const 1;
-      break __v0;
+      break 0;
     }
     else {
-      __v1: int = const 1;
-      break __v1;
+      break 0;
     }
   }
   block {
@@ -43,8 +41,7 @@
     then {
       v11: int = id b;
       ret v11;
-      __v2: int = const 1;
-      break __v2;
+      break 0;
     }
     else {
       block {
@@ -55,16 +52,13 @@
         then {
           v16: int = id a;
           ret v16;
-          __v3: int = const 1;
-          break __v3;
+          break 0;
         }
         else {
-          __v4: int = const 1;
-          break __v4;
+          break 0;
         }
       }
-      __v5: int = const 1;
-      break __v5;
+      break 0;
     }
   }
   v17: int = id a;
@@ -101,19 +95,17 @@
           v11: int = id b;
           print v11;
           v12: int = const 0;
-          __v7: int = const 1;
-          break __v7;
+          break 0;
         }
         else {
-          __v8: int = const 1;
-          break __v8;
+          break 0;
         }
       }
       v13: int = id b;
       v14: int = const 1;
       v15: int = sub v13 v14;
       b: int = id v15;
-      continue;
+      continue 0;
     }
     else {
       ret;

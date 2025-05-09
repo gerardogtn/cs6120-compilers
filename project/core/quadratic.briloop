@@ -29,7 +29,7 @@
         v15: int = const 1;
         v16: int = add v14 v15;
         i: int = id v16;
-        continue;
+        continue 0;
       }
     }
     else {

@@ -9,12 +9,10 @@
     if nlz
     then {
       n: int = mul n non;
-      __v0: int = const 1;
-      break __v0;
+      break 0;
     }
     else {
-      __v1: int = const 1;
-      break __v1;
+      break 0;
     }
   }
   __v2: bool = const true;
@@ -38,16 +36,16 @@
         deqi: bool = eq d i;
         if deqi
         then {
-          continue;
+          continue 0;
         }
         else {
           print d;
           res: int = add res d;
-          continue;
+          continue 0;
         }
       }
       else {
-        continue;
+        continue 0;
       }
     }
   }

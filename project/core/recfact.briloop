@@ -17,12 +17,10 @@
     then {
       v4: int = const 1;
       ret v4;
-      __v0: int = const 1;
-      break __v0;
+      break 0;
     }
     else {
-      __v1: int = const 1;
-      break __v1;
+      break 0;
     }
   }
   v5: int = id x;

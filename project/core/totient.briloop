@@ -28,23 +28,21 @@
             then {
               npdiv: int = div n p;
               n: int = id npdiv;
-              continue;
+              continue 0;
             }
             else {
               resdiv: int = div result p;
               result: int = sub result resdiv;
-              __v3: int = const 3;
-              break __v3;
+              break 1;
             }
           }
         }
         else {
-          __v4: int = const 1;
-          break __v4;
+          break 0;
         }
       }
       p: int = add p one;
-      continue;
+      continue 0;
     }
     else {
       block {
@@ -53,12 +51,10 @@
         then {
           resdiv: int = div result n;
           result: int = sub result resdiv;
-          __v6: int = const 1;
-          break __v6;
+          break 0;
         }
         else {
-          __v7: int = const 1;
-          break __v7;
+          break 0;
         }
       }
       ret result;

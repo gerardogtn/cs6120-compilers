@@ -15,11 +15,11 @@
       then {
         print fac;
         num: int = div num fac;
-        continue;
+        continue 0;
       }
       else {
         fac: int = add fac one;
-        continue;
+        continue 0;
       }
     }
     else {

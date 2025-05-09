@@ -30,14 +30,12 @@
         v19: int = id x;
         v20: int = mul v18 v19;
         ans: int = id v20;
-        __v0: int = const 1;
-        break __v0;
+        break 0;
       }
       else {
         v21: int = id half2;
         ans: int = id v21;
-        __v1: int = const 1;
-        break __v1;
+        break 0;
       }
     }
     v22: int = id ans;

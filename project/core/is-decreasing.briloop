@@ -24,19 +24,17 @@
         then {
           tmp14: bool = const false;
           ret tmp14;
-          __v1: int = const 1;
-          break __v1;
+          break 0;
         }
         else {
-          __v2: int = const 1;
-          break __v2;
+          break 0;
         }
       }
       prev: int = id digit;
       tmp15: int = const 10;
       tmp16: int = div tmp tmp15;
       tmp: int = id tmp16;
-      continue;
+      continue 0;
     }
     else {
       tmp17: bool = const true;

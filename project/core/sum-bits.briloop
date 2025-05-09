@@ -14,7 +14,7 @@
       bit: int = call @mod input two;
       input: int = div input two;
       sum: int = add sum bit;
-      continue;
+      continue 0;
     }
   }
 }

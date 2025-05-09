@@ -6,12 +6,10 @@
     then {
       neg_one: int = const -1;
       a: int = mul a neg_one;
-      __v0: int = const 1;
-      break __v0;
+      break 0;
     }
     else {
-      __v1: int = const 1;
-      break __v1;
+      break 0;
     }
   }
   ret a;
@@ -35,7 +33,7 @@
     else {
       a: int = id b;
       b: int = id mod;
-      continue;
+      continue 0;
     }
   }
 }
@@ -51,13 +49,11 @@
         ret zero;
       }
       else {
-        __v4: int = const 2;
-        break __v4;
+        break 0;
       }
     }
     else {
-      __v5: int = const 1;
-      break __v5;
+      break 0;
     }
   }
   ab: int = mul a b;
@@ -80,20 +76,18 @@
         then {
           lcm: int = call @lcm u n;
           ordu: int = div lcm u;
-          __v7: int = const 1;
-          break __v7;
+          break 0;
         }
         else {
           gcdun: int = call @gcd u n;
           ordu: int = div n gcdun;
-          __v8: int = const 1;
-          break __v8;
+          break 0;
         }
       }
       print u ordu;
       one: int = const 1;
       u: int = add u one;
-      continue;
+      continue 0;
     }
   }
 }

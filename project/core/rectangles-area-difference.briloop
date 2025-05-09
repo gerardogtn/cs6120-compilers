@@ -6,14 +6,12 @@
     a1_bigger: bool = gt a1 a2;
     if a1_bigger
     then {
-      __v0: int = const 1;
-      break __v0;
+      break 0;
     }
     else {
       neg1: int = const -1;
       res: int = mul res neg1;
-      __v1: int = const 1;
-      break __v1;
+      break 0;
     }
   }
   print res;

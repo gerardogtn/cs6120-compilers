@@ -21,10 +21,10 @@
       if comp1
       then {
         notdone: bool = const false;
-        continue;
+        continue 0;
       }
       else {
-        continue;
+        continue 0;
       }
     }
     else {

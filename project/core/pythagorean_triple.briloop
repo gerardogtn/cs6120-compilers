@@ -15,12 +15,10 @@
         if found
         then {
           print b a;
-          __v2: int = const 1;
-          break __v2;
+          break 0;
         }
         else {
-          __v3: int = const 1;
-          break __v3;
+          break 0;
         }
       }
       b: int = add b one;
@@ -34,11 +32,11 @@
           ret;
         }
         else {
-          continue;
+          continue 1;
         }
       }
       else {
-        continue;
+        continue 0;
       }
     }
   }

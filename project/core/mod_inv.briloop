@@ -28,8 +28,7 @@
         v18: bool = eq v12 v17;
         if v18
         then {
-          __v1: int = const 1;
-          break __v1;
+          break 0;
         }
         else {
           v19: int = id ans;
@@ -38,8 +37,7 @@
           v22: int = id p;
           v23: int = call @mod v21 v22;
           ans: int = id v23;
-          __v2: int = const 1;
-          break __v2;
+          break 0;
         }
       }
       v24: int = id a;
@@ -52,7 +50,7 @@
       v30: int = id two;
       v31: int = div v29 v30;
       m: int = id v31;
-      continue;
+      continue 0;
     }
     else {
       v32: int = id ans;

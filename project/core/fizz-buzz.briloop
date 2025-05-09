@@ -40,8 +40,7 @@
               v27: int = sub v25 v26;
               print v27;
               v28: int = const 0;
-              __v1: int = const 1;
-              break __v1;
+              break 0;
             }
             else {
               v29: int = const 0;
@@ -49,12 +48,10 @@
               v31: int = sub v29 v30;
               print v31;
               v32: int = const 0;
-              __v2: int = const 1;
-              break __v2;
+              break 0;
             }
           }
-          __v3: int = const 1;
-          break __v3;
+          break 0;
         }
         else {
           block {
@@ -66,26 +63,23 @@
               v37: int = sub v35 v36;
               print v37;
               v38: int = const 0;
-              __v4: int = const 1;
-              break __v4;
+              break 0;
             }
             else {
               v39: int = id index;
               print v39;
               v40: int = const 0;
-              __v5: int = const 1;
-              break __v5;
+              break 0;
             }
           }
-          __v6: int = const 1;
-          break __v6;
+          break 0;
         }
       }
       v41: int = id index;
       v42: int = const 1;
       v43: int = add v41 v42;
       index: int = id v43;
-      continue;
+      continue 0;
     }
     else {
       ret;

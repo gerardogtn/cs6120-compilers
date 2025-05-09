@@ -17,18 +17,16 @@
         if base_case
         then {
           ans: int = mul ans num;
-          __v1: int = const 1;
-          break __v1;
+          break 0;
         }
         else {
           new_arrows: int = sub arrows one;
           ans: int = call @up_arrow num new_arrows ans;
-          __v2: int = const 1;
-          break __v2;
+          break 0;
         }
       }
       i: int = add i one;
-      continue;
+      continue 0;
     }
     else {
       ret ans;

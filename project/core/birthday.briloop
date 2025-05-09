@@ -35,7 +35,7 @@
       v16: float = const 1;
       v17: float = fadd v15 v16;
       i: float = id v17;
-      continue;
+      continue 0;
     }
     else {
       v18: float = const 1;

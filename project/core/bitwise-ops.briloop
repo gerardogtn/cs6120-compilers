@@ -26,31 +26,27 @@
         if c
         then {
           cond_add: bool = or mod2a mod2b;
-          __v1: int = const 1;
-          break __v1;
+          break 0;
         }
         else {
-          __v2: int = const 1;
-          break __v2;
+          break 0;
         }
       }
       block {
         if cond_add
         then {
           ans: int = add ans to_add;
-          __v3: int = const 1;
-          break __v3;
+          break 0;
         }
         else {
-          __v4: int = const 1;
-          break __v4;
+          break 0;
         }
       }
       a: int = div a two;
       b: int = div b two;
       to_add: int = mul to_add two;
       i: int = add i one;
-      continue;
+      continue 0;
     }
     else {
       ret ans;
@@ -85,20 +81,17 @@
     if less
     then {
       ans: int = call @AND a b;
-      __v6: int = const 1;
-      break __v6;
+      break 0;
     }
     else {
       if equal
       then {
         ans: int = call @OR a b;
-        __v7: int = const 2;
-        break __v7;
+        break 0;
       }
       else {
         ans: int = call @XOR a b;
-        __v8: int = const 2;
-        break __v8;
+        break 0;
       }
     }
   }

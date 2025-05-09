@@ -22,7 +22,7 @@
       v13: int = const 1;
       v14: int = add v12 v13;
       i: int = id v14;
-      continue;
+      continue 0;
     }
     else {
       v15: int = id res;
@@ -50,7 +50,7 @@
       v10: int = const 1;
       v11: int = add v9 v10;
       i: int = id v11;
-      continue;
+      continue 0;
     }
     else {
       v12: int = id res;

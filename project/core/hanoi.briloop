@@ -9,12 +9,10 @@
       call @hanoi above src spare dst;
       print src dst;
       call @hanoi above spare dst src;
-      __v0: int = const 1;
-      break __v0;
+      break 0;
     }
     else {
-      __v1: int = const 1;
-      break __v1;
+      break 0;
     }
   }
   ret;

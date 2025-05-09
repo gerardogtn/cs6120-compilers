@@ -13,7 +13,7 @@
       pow: int = call @power digit digits;
       sum: int = add sum pow;
       tmp: int = div tmp ten;
-      continue;
+      continue 0;
     }
     else {
       res: bool = eq input sum;
@@ -59,7 +59,7 @@
     else {
       res: int = mul res base;
       exp: int = sub exp one;
-      continue;
+      continue 0;
     }
   }
 }

@@ -8,8 +8,7 @@
     cond: bool = eq n zero;
     if cond
     then {
-      __v0: int = const 1;
-      break __v0;
+      break 0;
     }
     else {
       two: int = const 2;
@@ -17,8 +16,7 @@
       v1: int = div n two;
       call @printBinary v1;
       print v0;
-      __v1: int = const 1;
-      break __v1;
+      break 0;
     }
   }
   ret;

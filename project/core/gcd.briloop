@@ -9,13 +9,11 @@
       if v2
       then {
         v3: int = sub v1 v0;
-        __v1: int = const 1;
-        break __v1;
+        break 0;
       }
       else {
         v3: int = sub v0 v1;
-        __v2: int = const 1;
-        break __v2;
+        break 0;
       }
     }
     v4: bool = eq v3 vc0;
@@ -28,11 +26,11 @@
       if v2
       then {
         v1: int = id v3;
-        continue;
+        continue 0;
       }
       else {
         v0: int = id v3;
-        continue;
+        continue 0;
       }
     }
   }

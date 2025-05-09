@@ -17,12 +17,10 @@
         if comp2
         then {
           result: int = id v0;
-          __v1: int = const 1;
-          break __v1;
+          break 0;
         }
         else {
-          __v2: int = const 1;
-          break __v2;
+          break 0;
         }
       }
       print result;
@@ -38,16 +36,14 @@
         then {
           sum: int = add sum i;
           sum: int = add sum qut;
-          __v3: int = const 1;
-          break __v3;
+          break 0;
         }
         else {
-          __v4: int = const 1;
-          break __v4;
+          break 0;
         }
       }
       i: int = add i v1;
-      continue;
+      continue 0;
     }
   }
 }

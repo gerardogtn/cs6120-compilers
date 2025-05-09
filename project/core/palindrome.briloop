@@ -14,11 +14,11 @@
       if check
       then {
         not_finished: bool = const false;
-        continue;
+        continue 0;
       }
       else {
         index: int = add index one;
-        continue;
+        continue 0;
       }
     }
     else {
@@ -42,12 +42,12 @@
       if finished
       then {
         not_finished: bool = const false;
-        continue;
+        continue 0;
       }
       else {
         res: int = mul res base;
         exp: int = sub exp one;
-        continue;
+        continue 0;
       }
     }
     else {
@@ -65,8 +65,7 @@
     if check
     then {
       is_palindrome: bool = const true;
-      __v6: int = const 1;
-      break __v6;
+      break 0;
     }
     else {
       power: int = call @pow ten len;
@@ -83,13 +82,11 @@
         next_in: int = div temp ten;
         next_len: int = sub len two;
         is_palindrome: bool = call @palindrome next_in next_len;
-        __v7: int = const 2;
-        break __v7;
+        break 0;
       }
       else {
         is_palindrome: bool = const false;
-        __v8: int = const 2;
-        break __v8;
+        break 0;
       }
     }
   }

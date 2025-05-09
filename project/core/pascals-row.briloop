@@ -42,7 +42,7 @@
       v21: int = const 1;
       v22: int = add v20 v21;
       i: int = id v22;
-      continue;
+      continue 0;
     }
     else {
       ret;

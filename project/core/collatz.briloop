@@ -17,12 +17,12 @@
       if even
       then {
         x: int = div x two;
-        continue;
+        continue 0;
       }
       else {
         x: int = mul x three;
         x: int = add x one;
-        continue;
+        continue 0;
       }
     }
   }

@@ -26,7 +26,7 @@
         elti: int = mul v1 v2;
         sum: int = add sum elti;
         idx: int = add idx one;
-        continue;
+        continue 0;
       }
       else {
         ret sum;

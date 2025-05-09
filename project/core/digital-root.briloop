@@ -20,14 +20,14 @@
           ret;
         }
         else {
-          continue;
+          continue 1;
         }
       }
       else {
         r0: int = call @peel_last_digit result;
         result: int = div result ten;
         result: int = add result r0;
-        continue;
+        continue 0;
       }
     }
   }
