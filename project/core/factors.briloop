@@ -1,0 +1,29 @@
+@main(num: int) {
+  zer: int = const 0;
+  one: int = const 1;
+  fac: int = const 2;
+  __v0: bool = const true;
+  while __v0 {
+    ispos: bool = lt one num;
+    if ispos
+    then {
+      quo: int = div num fac;
+      tmp: int = mul quo fac;
+      mod: int = sub num tmp;
+      iszero: bool = eq mod zer;
+      if iszero
+      then {
+        print fac;
+        num: int = div num fac;
+        continue;
+      }
+      else {
+        fac: int = add fac one;
+        continue;
+      }
+    }
+    else {
+      ret;
+    }
+  }
+}

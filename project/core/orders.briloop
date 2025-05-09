@@ -1,0 +1,107 @@
+@abs(a: int): int {
+  block {
+    zero: int = const 0;
+    is_neg: bool = lt a zero;
+    if is_neg
+    then {
+      neg_one: int = const -1;
+      a: int = mul a neg_one;
+      __v0: int = const 1;
+      break __v0;
+    }
+    else {
+      __v1: int = const 1;
+      break __v1;
+    }
+  }
+  ret a;
+}
+@mod(a: int, b: int): int {
+  q: int = div a b;
+  aq: int = mul b q;
+  mod: int = sub a aq;
+  ret mod;
+}
+@gcd(a: int, b: int): int {
+  __v2: bool = const true;
+  while __v2 {
+    mod: int = call @mod a b;
+    zero: int = const 0;
+    is_term: bool = eq mod zero;
+    if is_term
+    then {
+      ret b;
+    }
+    else {
+      a: int = id b;
+      b: int = id mod;
+      continue;
+    }
+  }
+}
+@lcm(a: int, b: int): int {
+  block {
+    zero: int = const 0;
+    a_is_zero: bool = eq a zero;
+    if a_is_zero
+    then {
+      b_is_zero: bool = eq b zero;
+      if b_is_zero
+      then {
+        ret zero;
+      }
+      else {
+        __v4: int = const 2;
+        break __v4;
+      }
+    }
+    else {
+      __v5: int = const 1;
+      break __v5;
+    }
+  }
+  ab: int = mul a b;
+  ab: int = call @abs ab;
+  gcdab: int = call @gcd a b;
+  lcm: int = div ab gcdab;
+  ret lcm;
+}
+@orders(u: int, n: int, use_lcm: bool) {
+  __v6: bool = const true;
+  while __v6 {
+    is_term: bool = eq u n;
+    if is_term
+    then {
+      ret;
+    }
+    else {
+      block {
+        if use_lcm
+        then {
+          lcm: int = call @lcm u n;
+          ordu: int = div lcm u;
+          __v7: int = const 1;
+          break __v7;
+        }
+        else {
+          gcdun: int = call @gcd u n;
+          ordu: int = div n gcdun;
+          __v8: int = const 1;
+          break __v8;
+        }
+      }
+      print u ordu;
+      one: int = const 1;
+      u: int = add u one;
+      continue;
+    }
+  }
+}
+@main(n: int, use_lcm: bool) {
+  zero: int = const 0;
+  u: int = const 1;
+  n: int = call @abs n;
+  print zero u;
+  call @orders u n use_lcm;
+  ret;
+}

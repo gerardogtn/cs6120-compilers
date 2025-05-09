@@ -1,0 +1,26 @@
+@main(x1: int, y1: int, x2: int, y2: int) {
+  block {
+    a1: int = call @area x1 y1;
+    a2: int = call @area x2 y2;
+    res: int = sub a1 a2;
+    a1_bigger: bool = gt a1 a2;
+    if a1_bigger
+    then {
+      __v0: int = const 1;
+      break __v0;
+    }
+    else {
+      neg1: int = const -1;
+      res: int = mul res neg1;
+      __v1: int = const 1;
+      break __v1;
+    }
+  }
+  print res;
+  ret;
+}
+@area(x: int, y: int): int {
+  area: int = mul x y;
+  print area;
+  ret area;
+}

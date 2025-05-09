@@ -1,0 +1,65 @@
+@main(input: int) {
+  zero: int = const 0;
+  ten: int = const 10;
+  sum: int = const 0;
+  digits: int = call @getDigits input;
+  tmp: int = id input;
+  __v0: bool = const true;
+  while __v0 {
+    b: bool = gt tmp zero;
+    if b
+    then {
+      digit: int = call @mod tmp ten;
+      pow: int = call @power digit digits;
+      sum: int = add sum pow;
+      tmp: int = div tmp ten;
+      continue;
+    }
+    else {
+      res: bool = eq input sum;
+      print res;
+      ret;
+    }
+  }
+}
+@getDigits(n: int): int {
+  ten: int = const 10;
+  zero: int = const 0;
+  one: int = const 1;
+  div: int = div n ten;
+  cond: bool = eq div zero;
+  if cond
+  then {
+    ret one;
+  }
+  else {
+    rec: int = call @getDigits div;
+    res: int = add rec one;
+    ret res;
+  }
+}
+@mod(a: int, b: int): int {
+  q: int = div a b;
+  aq: int = mul b q;
+  mod: int = sub a aq;
+  ret mod;
+}
+@power(base: int, exp: int): int {
+  ten: int = const 10;
+  zero: int = const 0;
+  one: int = const 1;
+  res: int = const 1;
+  __v2: bool = const true;
+  while __v2 {
+    b: bool = eq exp zero;
+    if b
+    then {
+      ret res;
+    }
+    else {
+      res: int = mul res base;
+      exp: int = sub exp one;
+      continue;
+    }
+  }
+}

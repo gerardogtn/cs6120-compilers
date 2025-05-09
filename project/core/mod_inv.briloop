@@ -1,0 +1,74 @@
+@main(n: int, p: int) {
+  v0: int = const 2;
+  two: int = id v0;
+  v1: int = id p;
+  v2: int = id two;
+  v3: int = sub v1 v2;
+  m: int = id v3;
+  v4: int = const 1;
+  ans: int = id v4;
+  v5: int = id n;
+  a: int = id v5;
+  v7: int = const 1;
+  i: int = id v7;
+  __v0: bool = const true;
+  while __v0 {
+    v8: int = id m;
+    v9: int = const 0;
+    v10: bool = gt v8 v9;
+    if v10
+    then {
+      block {
+        v12: int = id m;
+        v13: int = id m;
+        v14: int = id two;
+        v15: int = div v13 v14;
+        v16: int = id two;
+        v17: int = mul v15 v16;
+        v18: bool = eq v12 v17;
+        if v18
+        then {
+          __v1: int = const 1;
+          break __v1;
+        }
+        else {
+          v19: int = id ans;
+          v20: int = id a;
+          v21: int = mul v19 v20;
+          v22: int = id p;
+          v23: int = call @mod v21 v22;
+          ans: int = id v23;
+          __v2: int = const 1;
+          break __v2;
+        }
+      }
+      v24: int = id a;
+      v25: int = id a;
+      v26: int = mul v24 v25;
+      v27: int = id p;
+      v28: int = call @mod v26 v27;
+      a: int = id v28;
+      v29: int = id m;
+      v30: int = id two;
+      v31: int = div v29 v30;
+      m: int = id v31;
+      continue;
+    }
+    else {
+      v32: int = id ans;
+      print v32;
+      v33: int = const 0;
+      ret;
+    }
+  }
+}
+@mod(n: int, p: int): int {
+  v0: int = id n;
+  v1: int = id n;
+  v2: int = id p;
+  v3: int = div v1 v2;
+  v4: int = id p;
+  v5: int = mul v3 v4;
+  v6: int = sub v0 v5;
+  ret v6;
+}

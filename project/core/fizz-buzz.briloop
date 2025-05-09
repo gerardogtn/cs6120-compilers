@@ -1,0 +1,94 @@
+@main(input: int) {
+  v1: int = const 1;
+  index: int = id v1;
+  __v0: bool = const true;
+  while __v0 {
+    v2: int = id index;
+    v4: bool = lt v2 input;
+    if v4
+    then {
+      block {
+        v5: int = id index;
+        v6: int = const 3;
+        v7: int = div v5 v6;
+        div3: int = id v7;
+        v8: int = id div3;
+        v9: int = const 3;
+        v10: int = mul v8 v9;
+        v11: int = id index;
+        v12: bool = eq v10 v11;
+        isFizz: bool = id v12;
+        v13: int = id index;
+        v14: int = const 5;
+        v15: int = div v13 v14;
+        div5: int = id v15;
+        v16: int = id div5;
+        v17: int = const 5;
+        v18: int = mul v16 v17;
+        v19: int = id index;
+        v20: bool = eq v18 v19;
+        isBuzz: bool = id v20;
+        v22: bool = id isFizz;
+        if v22
+        then {
+          block {
+            v24: bool = id isBuzz;
+            if v24
+            then {
+              v25: int = const 0;
+              v26: int = const 1;
+              v27: int = sub v25 v26;
+              print v27;
+              v28: int = const 0;
+              __v1: int = const 1;
+              break __v1;
+            }
+            else {
+              v29: int = const 0;
+              v30: int = const 2;
+              v31: int = sub v29 v30;
+              print v31;
+              v32: int = const 0;
+              __v2: int = const 1;
+              break __v2;
+            }
+          }
+          __v3: int = const 1;
+          break __v3;
+        }
+        else {
+          block {
+            v34: bool = id isBuzz;
+            if v34
+            then {
+              v35: int = const 0;
+              v36: int = const 3;
+              v37: int = sub v35 v36;
+              print v37;
+              v38: int = const 0;
+              __v4: int = const 1;
+              break __v4;
+            }
+            else {
+              v39: int = id index;
+              print v39;
+              v40: int = const 0;
+              __v5: int = const 1;
+              break __v5;
+            }
+          }
+          __v6: int = const 1;
+          break __v6;
+        }
+      }
+      v41: int = id index;
+      v42: int = const 1;
+      v43: int = add v41 v42;
+      index: int = id v43;
+      continue;
+    }
+    else {
+      ret;
+    }
+  }
+}

@@ -1,0 +1,97 @@
+@main(in: int) {
+  ten: int = const 10;
+  zero: int = const 0;
+  one: int = const 1;
+  index: int = const 1;
+  not_finished: bool = const true;
+  __v0: bool = const true;
+  while __v0 {
+    if not_finished
+    then {
+      power: int = call @pow ten index;
+      d: int = div in power;
+      check: bool = eq d zero;
+      if check
+      then {
+        not_finished: bool = const false;
+        continue;
+      }
+      else {
+        index: int = add index one;
+        continue;
+      }
+    }
+    else {
+      exp: int = sub index one;
+      is_palindrome: bool = call @palindrome in exp;
+      print is_palindrome;
+      ret;
+    }
+  }
+}
+@pow(base: int, exp: int): int {
+  res: int = const 1;
+  zero: int = const 0;
+  one: int = const 1;
+  not_finished: bool = const true;
+  __v3: bool = const true;
+  while __v3 {
+    if not_finished
+    then {
+      finished: bool = eq exp zero;
+      if finished
+      then {
+        not_finished: bool = const false;
+        continue;
+      }
+      else {
+        res: int = mul res base;
+        exp: int = sub exp one;
+        continue;
+      }
+    }
+    else {
+      ret res;
+    }
+  }
+}
+@palindrome(in: int, len: int): bool {
+  block {
+    is_palindrome: bool = const false;
+    zero: int = const 0;
+    two: int = const 2;
+    ten: int = const 10;
+    check: bool = le len zero;
+    if check
+    then {
+      is_palindrome: bool = const true;
+      __v6: int = const 1;
+      break __v6;
+    }
+    else {
+      power: int = call @pow ten len;
+      left: int = div in power;
+      v1: int = div in ten;
+      v2: int = mul v1 ten;
+      right: int = sub in v2;
+      is_equal: bool = eq left right;
+      if is_equal
+      then {
+        temp: int = mul power left;
+        temp: int = sub in temp;
+        temp: int = sub temp right;
+        next_in: int = div temp ten;
+        next_len: int = sub len two;
+        is_palindrome: bool = call @palindrome next_in next_len;
+        __v7: int = const 2;
+        break __v7;
+      }
+      else {
+        is_palindrome: bool = const false;
+        __v8: int = const 2;
+        break __v8;
+      }
+    }
+  }
+  ret is_palindrome;
+}

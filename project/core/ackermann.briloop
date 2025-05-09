@@ -1,0 +1,31 @@
+@ack(m: int, n: int): int {
+  zero: int = const 0;
+  one: int = const 1;
+  cond_m: bool = eq m zero;
+  if cond_m
+  then {
+    tmp: int = add n one;
+    ret tmp;
+  }
+  else {
+    cond_n: bool = eq n zero;
+    if cond_n
+    then {
+      m1: int = sub m one;
+      tmp: int = call @ack m1 one;
+      ret tmp;
+    }
+    else {
+      m1: int = sub m one;
+      n1: int = sub n one;
+      t1: int = call @ack m n1;
+      t2: int = call @ack m1 t1;
+      ret t2;
+    }
+  }
+}
+@main(m: int, n: int) {
+  tmp: int = call @ack m n;
+  print tmp;
+  ret;
+}

@@ -1,0 +1,107 @@
+@mod2(a: int): bool {
+  two: int = const 2;
+  tmp: int = div a two;
+  tmp2: int = mul tmp two;
+  tmp3: int = sub a tmp2;
+  one: int = const 1;
+  ans: bool = eq one tmp3;
+  ret ans;
+}
+@loop_subroutine(a: int, b: int, c: bool): int {
+  i: int = const 0;
+  n: int = const 63;
+  one: int = const 1;
+  two: int = const 2;
+  ans: int = const 0;
+  to_add: int = const 1;
+  __v0: bool = const true;
+  while __v0 {
+    cond: bool = le i n;
+    if cond
+    then {
+      block {
+        mod2a: bool = call @mod2 a;
+        mod2b: bool = call @mod2 b;
+        cond_add: bool = and mod2a mod2b;
+        if c
+        then {
+          cond_add: bool = or mod2a mod2b;
+          __v1: int = const 1;
+          break __v1;
+        }
+        else {
+          __v2: int = const 1;
+          break __v2;
+        }
+      }
+      block {
+        if cond_add
+        then {
+          ans: int = add ans to_add;
+          __v3: int = const 1;
+          break __v3;
+        }
+        else {
+          __v4: int = const 1;
+          break __v4;
+        }
+      }
+      a: int = div a two;
+      b: int = div b two;
+      to_add: int = mul to_add two;
+      i: int = add i one;
+      continue;
+    }
+    else {
+      ret ans;
+    }
+  }
+}
+@OR(a: int, b: int): int {
+  oper: bool = const true;
+  v1: int = call @loop_subroutine a b oper;
+  ret v1;
+}
+@AND(a: int, b: int): int {
+  oper: bool = const false;
+  v1: int = call @loop_subroutine a b oper;
+  ret v1;
+}
+@XOR(a: int, b: int): int {
+  and_val: int = call @AND a b;
+  or_val: int = call @OR a b;
+  ans: int = sub or_val and_val;
+  ret ans;
+}
+@main(a: int, b: int, c: int) {
+  block {
+    one: int = const 1;
+    zero: int = const 0;
+    sel: int = sub c one;
+    ans: int = id zero;
+    less: bool = lt sel zero;
+    equal: bool = eq sel zero;
+    greater: bool = gt sel zero;
+    if less
+    then {
+      ans: int = call @AND a b;
+      __v6: int = const 1;
+      break __v6;
+    }
+    else {
+      if equal
+      then {
+        ans: int = call @OR a b;
+        __v7: int = const 2;
+        break __v7;
+      }
+      else {
+        ans: int = call @XOR a b;
+        __v8: int = const 2;
+        break __v8;
+      }
+    }
+  }
+  print ans;
+  ret;
+}

@@ -1,0 +1,60 @@
+@main(n: int) {
+  block {
+    i: int = const 0;
+    res: int = const 0;
+    one: int = const 1;
+    non: int = const -1;
+    zer: int = const 0;
+    nlz: bool = lt n zer;
+    if nlz
+    then {
+      n: int = mul n non;
+      __v0: int = const 1;
+      break __v0;
+    }
+    else {
+      __v1: int = const 1;
+      break __v1;
+    }
+  }
+  __v2: bool = const true;
+  while __v2 {
+    i: int = add i one;
+    isq: int = mul i i;
+    sqgt: bool = gt isq n;
+    if sqgt
+    then {
+      print res;
+      ret;
+    }
+    else {
+      m: int = call @mod n i;
+      eqz: bool = eq m zer;
+      if eqz
+      then {
+        print i;
+        res: int = add res i;
+        d: int = div n i;
+        deqi: bool = eq d i;
+        if deqi
+        then {
+          continue;
+        }
+        else {
+          print d;
+          res: int = add res d;
+          continue;
+        }
+      }
+      else {
+        continue;
+      }
+    }
+  }
+}
+@mod(dividend: int, divisor: int): int {
+  quot: int = div dividend divisor;
+  prod: int = mul divisor quot;
+  diff: int = sub dividend prod;
+  ret diff;
+}

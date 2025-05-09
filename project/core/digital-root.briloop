@@ -1,0 +1,49 @@
+@main(input: int) {
+  zero: int = const 0;
+  ten: int = const 10;
+  result: int = const 0;
+  __v0: bool = const true;
+  while __v0 {
+    digit: int = call @peel_last_digit input;
+    input: int = div input ten;
+    result: int = add result digit;
+    __v1: bool = const true;
+    while __v1 {
+      print result;
+      processed: bool = call @is_single_digit result;
+      if processed
+      then {
+        done: bool = eq input zero;
+        if done
+        then {
+          print result;
+          ret;
+        }
+        else {
+          continue;
+        }
+      }
+      else {
+        r0: int = call @peel_last_digit result;
+        result: int = div result ten;
+        result: int = add result r0;
+        continue;
+      }
+    }
+  }
+}
+@is_single_digit(input: int): bool {
+  ten: int = const 10;
+  zero: int = const 0;
+  divided: int = div input ten;
+  mul_by_ten: int = mul divided ten;
+  result: bool = eq mul_by_ten zero;
+  ret result;
+}
+@peel_last_digit(input: int): int {
+  ten: int = const 10;
+  div_by_ten: int = div input ten;
+  mul_by_ten: int = mul div_by_ten ten;
+  last_digit: int = sub input mul_by_ten;
+  ret last_digit;
+}

@@ -1,0 +1,7 @@
+[envs.compare]
+command = "bril2json < {filename} | brili {args} "
+output.out = "-"
+
+[envs.briloop]
+command = "bril2json < {filename} | ./run.sh | briloop2txt"
+output.briloop = "-"

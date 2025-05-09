@@ -1,0 +1,122 @@
+@main {
+  v0: int = const 20;
+  a: int = id v0;
+  v1: int = id a;
+  call @relative_primes v1;
+  v2: int = const 0;
+  ret;
+}
+@mod(a: int, b: int): int {
+  v0: int = id a;
+  v1: int = id b;
+  v2: int = div v0 v1;
+  v3: int = mul v2 v1;
+  v4: int = sub v0 v3;
+  ret v4;
+}
+@gcd(a: int, b: int): int {
+  block {
+    v1: int = id b;
+    v2: int = id a;
+    v3: bool = gt v1 v2;
+    if v3
+    then {
+      v4: int = id a;
+      tmp: int = id v4;
+      v5: int = id b;
+      a: int = id v5;
+      v6: int = id tmp;
+      b: int = id v6;
+      __v0: int = const 1;
+      break __v0;
+    }
+    else {
+      __v1: int = const 1;
+      break __v1;
+    }
+  }
+  block {
+    v8: int = id a;
+    v9: int = const 0;
+    v10: bool = eq v8 v9;
+    if v10
+    then {
+      v11: int = id b;
+      ret v11;
+      __v2: int = const 1;
+      break __v2;
+    }
+    else {
+      block {
+        v13: int = id b;
+        v14: int = const 0;
+        v15: bool = eq v13 v14;
+        if v15
+        then {
+          v16: int = id a;
+          ret v16;
+          __v3: int = const 1;
+          break __v3;
+        }
+        else {
+          __v4: int = const 1;
+          break __v4;
+        }
+      }
+      __v5: int = const 1;
+      break __v5;
+    }
+  }
+  v17: int = id a;
+  v18: int = id b;
+  remainder: int = call @mod v17 v18;
+  remainder: int = id remainder;
+  v19: int = id b;
+  v20: int = id remainder;
+  g: int = call @gcd v19 v20;
+  g: int = id g;
+  v21: int = id g;
+  ret v21;
+}
+@relative_primes(a: int) {
+  v1: int = id a;
+  b: int = id v1;
+  __v6: bool = const true;
+  while __v6 {
+    v2: int = id b;
+    v3: int = const 1;
+    v4: bool = ge v2 v3;
+    if v4
+    then {
+      block {
+        v5: int = id a;
+        v6: int = id b;
+        g: int = call @gcd v5 v6;
+        g: int = id g;
+        v8: int = id g;
+        v9: int = const 1;
+        v10: bool = eq v8 v9;
+        if v10
+        then {
+          v11: int = id b;
+          print v11;
+          v12: int = const 0;
+          __v7: int = const 1;
+          break __v7;
+        }
+        else {
+          __v8: int = const 1;
+          break __v8;
+        }
+      }
+      v13: int = id b;
+      v14: int = const 1;
+      v15: int = sub v13 v14;
+      b: int = id v15;
+      continue;
+    }
+    else {
+      ret;
+    }
+  }
+}

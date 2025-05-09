@@ -1,0 +1,35 @@
+@main(input: int) {
+  n: int = id input;
+  v0: int = const 0;
+  v1: int = const 10;
+  result: int = id v0;
+  v2: bool = const true;
+  notdone: bool = id v2;
+  __v0: bool = const true;
+  while __v0 {
+    v4: bool = id notdone;
+    if v4
+    then {
+      v5: int = id n;
+      a: int = div v5 v1;
+      floor: int = mul a v1;
+      remainder: int = sub v5 floor;
+      result: int = mul result v1;
+      result: int = add result remainder;
+      n: int = id a;
+      comp1: bool = eq n v0;
+      if comp1
+      then {
+        notdone: bool = const false;
+        continue;
+      }
+      else {
+        continue;
+      }
+    }
+    else {
+      print result;
+      ret;
+    }
+  }
+}

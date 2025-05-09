@@ -1,0 +1,92 @@
+@main(n: int) {
+  v2: int = const 1;
+  i: int = id v2;
+  __v0: bool = const true;
+  while __v0 {
+    v3: int = id i;
+    v4: int = id n;
+    v5: bool = lt v3 v4;
+    if v5
+    then {
+      block {
+        v6: int = id i;
+        isPrime: bool = call @checkPrime v6;
+        isPrime: bool = id isPrime;
+        v8: bool = id isPrime;
+        if v8
+        then {
+          v9: int = const 1;
+          print v9;
+          v10: int = const 0;
+          __v1: int = const 1;
+          break __v1;
+        }
+        else {
+          v11: int = const 0;
+          print v11;
+          v12: int = const 0;
+          __v2: int = const 1;
+          break __v2;
+        }
+      }
+      v13: int = id i;
+      v14: int = const 1;
+      v15: int = add v13 v14;
+      i: int = id v15;
+      continue;
+    }
+    else {
+      ret;
+    }
+  }
+}
+@checkPrime(x: int): bool {
+  v1: int = id x;
+  v2: int = const 1;
+  v3: bool = le v1 v2;
+  if v3
+  then {
+    v4: bool = const false;
+    ret v4;
+  }
+  else {
+    v6: int = const 2;
+    i: int = id v6;
+    __v4: bool = const true;
+    while __v4 {
+      v7: int = id i;
+      v8: int = id x;
+      v9: bool = lt v7 v8;
+      if v9
+      then {
+        v10: int = id x;
+        v11: int = id i;
+        v12: int = div v10 v11;
+        div: int = id v12;
+        v13: int = id div;
+        v14: int = id i;
+        v15: int = mul v13 v14;
+        v16: int = id x;
+        v17: bool = eq v15 v16;
+        isDivisible: bool = id v17;
+        v19: bool = id isDivisible;
+        if v19
+        then {
+          v20: bool = const false;
+          ret v20;
+        }
+        else {
+          v21: int = id i;
+          v22: int = const 1;
+          v23: int = add v21 v22;
+          i: int = id v23;
+          continue;
+        }
+      }
+      else {
+        v24: bool = const true;
+        ret v24;
+      }
+    }
+  }
+}

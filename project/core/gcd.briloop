@@ -1,0 +1,39 @@
+@main(op1: int, op2: int) {
+  vc0: int = const 0;
+  v0: int = id op1;
+  v1: int = id op2;
+  __v0: bool = const true;
+  while __v0 {
+    block {
+      v2: bool = lt v0 v1;
+      if v2
+      then {
+        v3: int = sub v1 v0;
+        __v1: int = const 1;
+        break __v1;
+      }
+      else {
+        v3: int = sub v0 v1;
+        __v2: int = const 1;
+        break __v2;
+      }
+    }
+    v4: bool = eq v3 vc0;
+    if v4
+    then {
+      print v1;
+      ret;
+    }
+    else {
+      if v2
+      then {
+        v1: int = id v3;
+        continue;
+      }
+      else {
+        v0: int = id v3;
+        continue;
+      }
+    }
+  }
+}

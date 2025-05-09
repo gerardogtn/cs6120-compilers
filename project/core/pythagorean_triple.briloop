@@ -1,0 +1,45 @@
+@main(n: int) {
+  one: int = const 1;
+  n_sq: int = mul n n;
+  a: int = id one;
+  __v0: bool = const true;
+  while __v0 {
+    b: int = id one;
+    __v1: bool = const true;
+    while __v1 {
+      block {
+        a_sq: int = mul a a;
+        b_sq: int = mul b b;
+        sum: int = add a_sq b_sq;
+        found: bool = eq sum n_sq;
+        if found
+        then {
+          print b a;
+          __v2: int = const 1;
+          break __v2;
+        }
+        else {
+          __v3: int = const 1;
+          break __v3;
+        }
+      }
+      b: int = add b one;
+      done: bool = ge b a;
+      if done
+      then {
+        a: int = add a one;
+        done: bool = ge a n;
+        if done
+        then {
+          ret;
+        }
+        else {
+          continue;
+        }
+      }
+      else {
+        continue;
+      }
+    }
+  }
+}

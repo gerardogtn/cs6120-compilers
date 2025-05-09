@@ -1,0 +1,53 @@
+@main(input: int) {
+  n: int = id input;
+  v0: int = const 0;
+  v1: int = const 1;
+  v2: int = const 2;
+  sum: int = id v1;
+  i: int = id v2;
+  result: int = id v1;
+  __v0: bool = const true;
+  while __v0 {
+    ii: int = mul i i;
+    comp: bool = gt ii n;
+    if comp
+    then {
+      block {
+        comp2: bool = eq sum n;
+        if comp2
+        then {
+          result: int = id v0;
+          __v1: int = const 1;
+          break __v1;
+        }
+        else {
+          __v2: int = const 1;
+          break __v2;
+        }
+      }
+      print result;
+      ret;
+    }
+    else {
+      block {
+        qut: int = div n i;
+        mpt: int = mul qut i;
+        dif: int = sub n mpt;
+        comp1: bool = eq dif v0;
+        if comp1
+        then {
+          sum: int = add sum i;
+          sum: int = add sum qut;
+          __v3: int = const 1;
+          break __v3;
+        }
+        else {
+          __v4: int = const 1;
+          break __v4;
+        }
+      }
+      i: int = add i v1;
+      continue;
+    }
+  }
+}

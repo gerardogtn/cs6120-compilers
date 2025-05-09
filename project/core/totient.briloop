@@ -1,0 +1,73 @@
+@main(n: int) {
+  print n;
+  tot: int = call @totient n;
+  print tot;
+  ret;
+}
+@totient(n: int): int {
+  result: int = id n;
+  p: int = const 2;
+  one: int = const 1;
+  zero: int = const 0;
+  __v0: bool = const true;
+  while __v0 {
+    pp: int = mul p p;
+    cond: bool = le pp n;
+    if cond
+    then {
+      block {
+        npmod: int = call @mod n p;
+        if_cond: bool = eq npmod zero;
+        if if_cond
+        then {
+          __v1: bool = const true;
+          while __v1 {
+            npmod: int = call @mod n p;
+            while_cond: bool = eq npmod zero;
+            if while_cond
+            then {
+              npdiv: int = div n p;
+              n: int = id npdiv;
+              continue;
+            }
+            else {
+              resdiv: int = div result p;
+              result: int = sub result resdiv;
+              __v3: int = const 3;
+              break __v3;
+            }
+          }
+        }
+        else {
+          __v4: int = const 1;
+          break __v4;
+        }
+      }
+      p: int = add p one;
+      continue;
+    }
+    else {
+      block {
+        final_if_cond: bool = gt n one;
+        if final_if_cond
+        then {
+          resdiv: int = div result n;
+          result: int = sub result resdiv;
+          __v6: int = const 1;
+          break __v6;
+        }
+        else {
+          __v7: int = const 1;
+          break __v7;
+        }
+      }
+      ret result;
+    }
+  }
+}
+@mod(a: int, b: int): int {
+  ad: int = div a b;
+  mad: int = mul b ad;
+  ans: int = sub a mad;
+  ret ans;
+}

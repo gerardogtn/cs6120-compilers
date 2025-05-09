@@ -1,0 +1,54 @@
+@main(x: int) {
+  tmp0: bool = call @is_decreasing x;
+  tmp: bool = id tmp0;
+  print tmp;
+  ret;
+}
+@is_decreasing(x: int): bool {
+  tmp: int = id x;
+  tmp1: int = const 1;
+  tmp2: int = const -1;
+  tmp3: int = mul tmp1 tmp2;
+  prev: int = id tmp3;
+  __v0: bool = const true;
+  while __v0 {
+    tmp7: int = const 0;
+    tmp8: bool = gt tmp tmp7;
+    if tmp8
+    then {
+      block {
+        tmp9: int = call @last_digit tmp;
+        digit: int = id tmp9;
+        tmp10: bool = lt digit prev;
+        if tmp10
+        then {
+          tmp14: bool = const false;
+          ret tmp14;
+          __v1: int = const 1;
+          break __v1;
+        }
+        else {
+          __v2: int = const 1;
+          break __v2;
+        }
+      }
+      prev: int = id digit;
+      tmp15: int = const 10;
+      tmp16: int = div tmp tmp15;
+      tmp: int = id tmp16;
+      continue;
+    }
+    else {
+      tmp17: bool = const true;
+      ret tmp17;
+    }
+  }
+}
+@last_digit(x: int): int {
+  tmp18: int = const 10;
+  tmp19: int = div x tmp18;
+  tmp20: int = const 10;
+  tmp21: int = mul tmp19 tmp20;
+  tmp22: int = sub x tmp21;
+  ret tmp22;
+}
