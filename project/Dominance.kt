@@ -82,6 +82,13 @@ data class DTree(
     val children: List<DTree>
 )
 
+fun DTree.formatted(level: Int = 0): String {
+    val indent = "  ".repeat(level)
+    return children.fold("$indent$bid") { acc, tree -> 
+        "$acc\n${tree.formatted(level + 1)}"
+    }
+}
+
 typealias Idoms = TreeMap<Int, TreeSet<Int>>
 
 // A naive implementation of the immediate dominators relations of a 

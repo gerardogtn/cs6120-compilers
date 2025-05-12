@@ -225,6 +225,18 @@ fun doBranch(
     }
 }
 
+fun sortedDtree(
+    dtree: DTree,
+    rpo: Rpo,
+): DTree {
+    return dtree.copy(
+        children = dtree
+            .children
+            .map { sortedDtree(it, rpo) }
+            .sortedWith { l, r -> rpo[r.bid]!!.compareTo(l.bid) }
+    )
+}
+
 fun beyondRelooper(
     func: BrilFunction
 ): BriloopFunction {
@@ -243,6 +255,10 @@ fun beyondRelooper(
     val rpo = reversePostOrder(cfg)
     log("Rpo")
     log(rpo.toString())
+
+    val orderedTree = sortedDtree(tree, rpo)
+    log("ordered tree")
+    log(orderedTree.formatted())
     
     val labelToBlock = labelToBlock(blocks)
 
@@ -265,7 +281,7 @@ fun beyondRelooper(
         }
         log("Block $i $text")
     }
-    val brilooped = doTree(tree, rpo, preds, blocks, emptyList(), labelToBlock)
+    val brilooped = doTree(orderedTree, rpo, preds, blocks, emptyList(), labelToBlock)
 
     return BriloopFunction(
         name = func.name,
