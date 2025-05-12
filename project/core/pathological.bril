@@ -1,0 +1,30 @@
+# ARGS true true
+# ARGS true false
+# ARGS false true
+# ARGS false false
+@main(l: bool, r: bool) {
+.a:
+    i: int = const 1;
+    print i;
+    br l .b .d;
+.b:
+    i: int = const 2;
+    print i;
+    br r .c .e;
+.c: 
+    i: int = const 3;
+    print i;
+    jmp .f;
+.d: 
+    i: int = const 4;
+    print i;
+    br r .e .f;
+.e: 
+    i: int = const 5;
+    print i;
+    jmp .f;
+.f: 
+    i: int = const 6;
+    print i;
+    ret;
+}

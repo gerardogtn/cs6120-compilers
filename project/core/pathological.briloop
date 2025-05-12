@@ -1,0 +1,39 @@
+@main(l: bool, r: bool) {
+  block {
+    block {
+      i: int = const 1;
+      print i;
+      if l
+      then {
+        i: int = const 2;
+        print i;
+        if r
+        then {
+          i: int = const 3;
+          print i;
+          break 1;
+        }
+        else {
+          break 0;
+        }
+      }
+      else {
+        i: int = const 4;
+        print i;
+        if r
+        then {
+          break 0;
+        }
+        else {
+          break 1;
+        }
+      }
+    }
+    i: int = const 5;
+    print i;
+    break 0;
+  }
+  i: int = const 6;
+  print i;
+  ret;
+}
