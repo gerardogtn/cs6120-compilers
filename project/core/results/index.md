@@ -6,15 +6,16 @@ name = "Gerardo Garcia Teruel Noriega"
 name = "Dev Patel"
 +++
 
-# Abstract
+# Brilooped
 
-In this project, we implemented the relooper algorithm to introduce structured control flow into bril programs. This allows bril programs to be written with if-then-else statements and while loops as briloop programs. These can then be compiled to traditional bril. Additionally, bril programs can be generated from bril files. These are translated using Ramsey's relooper algorithm, which reconstructs structured control flow.
+## Abstract
 
-# Representing Briloop Programs
+In this project we introduce Briloop, an extension intto the [Bril programming language](https://capra.cs.cornell.edu/bril/) that supports structured control flow, this allows bril programs to use if-then-else, while, and block statements instead of relying on jumps and branches. We also implemented Ramsey's [Beyond Relooper](https://dl.acm.org/doi/10.1145/3547621) to translate bril programs into briloop automatically, having a an average performance penalty of 9% when using the core bril benchmarks. Brilooped not only enables programmers to write bril programs with structured control flow, but also enables a translation from [Bril into WebAssembly]().  
 
+## Representing Briloop Programs
+
+Brilooped programs extends the Bril instruction set with the following op codes: while, block, if, break, and continue. 
 Brilooped extends the Bril instruction set with new control flow operations that provide structured alternatives to jumps and labels. These new op codes allow programmers to write more readable and maintainable code with familiar control flow constructs like loops and conditionals. This structured control flow can also be useful for specific applications such as WASM.
-
-## New Op Codes
 
 ### `while`
 
@@ -28,7 +29,7 @@ The `while` operation introduces a structured loop into Bril programs:
 
 Example usage:
 
-```
+```json
 {
   "args": [
     "cond"
@@ -44,10 +45,27 @@ Example usage:
         "op": "add",
         "type": "int"
       },
+      {
+        "args": ["b", "ten"],
+        "dest": "cond",
+        "op": "le",
+        "type": "bool"
+      }
     ]
   ],
   "op": "while"
 },
+```
+
+```
+ten: int = const 10;
+a: int = const 1;
+b: int = const 0;
+cond: bool = id true;
+while cond {
+    b: int = add a b;
+    cond: bool = le b ten;
+}
 ```
 
 ### `if`
@@ -62,7 +80,7 @@ The `if` operation implements conditional execution:
 
 Example usage:
 
-```
+```json
 {
   "args": [
     "cond"
@@ -82,10 +100,10 @@ Example usage:
     [
       {
         "args": [
-          "temp",
+          "a",
           "b"
         ],
-        "dest": "a",
+        "dest": "temp",
         "op": "sub",
         "type": "int"
       },
@@ -95,6 +113,18 @@ Example usage:
 }
 ```
 
+```
+cond: bool = id true;
+if cond 
+then {
+    temp: int = add a b;
+}
+else {
+    temp: int = sub a b;
+}
+
+```
+
 ### The `break` and `continue` Operations
 
 Two additional operations provide finer control within loops:
@@ -102,6 +132,34 @@ Two additional operations provide finer control within loops:
 - `break`: Takes one constant argument and exits `value` loops. This brings execution to the top of this loop.
 - `continue`: Takes one constant argument and exits `value` loops. This continues execution at the following instruction.
 
+For example the following program will print 1 and 2 forever: 
+```
+cond: bool = const true;
+one: int = const 1;
+two: int = const 2;
+while cond {
+    print one;
+    while cond {
+        print two;
+        continue 1;
+    }
+}
+```
+Whereas this program will print 1 followed by infinite twos: 
+
+```
+cond: bool = const true;
+one: int = const 1;
+two: int = const 2;
+while cond {
+    print one;
+    while cond {
+        print two;
+        continue 0;
+    }
+}
+`
+```
 # Results
 
 ## Impact of Brilooped Transformation on Dynamic Instruction Count
