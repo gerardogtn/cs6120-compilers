@@ -5,13 +5,11 @@
     if t1
     then {
       t2: int = const 2;
-      __v0: int = const 1;
-      break __v0;
+      break 0;
     }
     else {
       t2: int = id a;
-      __v1: int = const 1;
-      break __v1;
+      break 0;
     }
   }
   __v2: bool = const true;
@@ -38,18 +36,16 @@
               t13: int = const 1;
               t14: int = const 2;
               t5: bool = eq t13 t14;
-              __v4: int = const 2;
-              break __v4;
+              break 0;
             }
             else {
               t15: int = const 1;
               t6: int = add t15 t6;
-              continue;
+              continue 1;
             }
           }
           else {
-            __v6: int = const 1;
-            break __v6;
+            break 0;
           }
         }
         block {
@@ -58,17 +54,15 @@
           if t5
           then {
             print t2;
-            __v7: int = const 1;
-            break __v7;
+            break 0;
           }
           else {
-            __v8: int = const 1;
-            break __v8;
+            break 0;
           }
         }
         t17: int = const 1;
         t2: int = add t2 t17;
-        continue;
+        continue 1;
       }
     }
     else {
