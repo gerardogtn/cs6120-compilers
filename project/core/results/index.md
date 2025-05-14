@@ -10,11 +10,11 @@ name = "Dev Patel"
 
 ## Abstract
 
-In this project we introduce Briloop, an extension intto the [Bril programming language](https://capra.cs.cornell.edu/bril/) that supports structured control flow, this allows bril programs to use if-then-else, while, and block statements instead of relying on jumps and branches. We also implemented Ramsey's [Beyond Relooper](https://dl.acm.org/doi/10.1145/3547621) to translate bril programs into briloop automatically, having a an average performance penalty of 9% when using the core bril benchmarks. Brilooped not only enables programmers to write bril programs with structured control flow, but also enables a translation from [Bril into WebAssembly]().  
+In this project we introduce Briloop, an extension into the [Bril programming language](https://capra.cs.cornell.edu/bril/) that supports structured control flow, this allows bril programs to use if-then-else, while, and block statements instead of relying on jumps and branches. We also implemented Ramsey's [Beyond Relooper](https://dl.acm.org/doi/10.1145/3547621) to translate bril programs into briloop automatically, having a an average performance penalty of 9% when using the core bril benchmarks. Brilooped not only enables programmers to write bril programs with structured control flow, but also enables a translation from [Bril into WebAssembly]().
 
 ## Representing Briloop Programs
 
-Brilooped programs extends the Bril instruction set with the following op codes: while, block, if, break, and continue. 
+Brilooped programs extends the Bril instruction set with the following op codes: while, block, if, break, and continue.
 Brilooped extends the Bril instruction set with new control flow operations that provide structured alternatives to jumps and labels. These new op codes allow programmers to write more readable and maintainable code with familiar control flow constructs like loops and conditionals. This structured control flow can also be useful for specific applications such as WASM.
 
 ### `while`
@@ -82,31 +82,23 @@ Example usage:
 
 ```json
 {
-  "args": [
-    "cond"
-  ],
+  "args": ["cond"],
   "children": [
     [
       {
-        "args": [
-          "a",
-          "b"
-        ],
+        "args": ["a", "b"],
         "dest": "temp",
         "op": "add",
         "type": "int"
-      },
+      }
     ],
     [
       {
-        "args": [
-          "a",
-          "b"
-        ],
+        "args": ["a", "b"],
         "dest": "temp",
         "op": "sub",
         "type": "int"
-      },
+      }
     ]
   ],
   "op": "if"
@@ -115,7 +107,7 @@ Example usage:
 
 ```
 cond: bool = id true;
-if cond 
+if cond
 then {
     temp: int = add a b;
 }
@@ -132,7 +124,8 @@ Two additional operations provide finer control within loops:
 - `break`: Takes one constant argument and exits `value` loops. This brings execution to the top of this loop.
 - `continue`: Takes one constant argument and exits `value` loops. This continues execution at the following instruction.
 
-For example the following program will print 1 and 2 forever: 
+For example the following program will print 1 and 2 forever:
+
 ```
 cond: bool = const true;
 one: int = const 1;
@@ -145,7 +138,8 @@ while cond {
     }
 }
 ```
-Whereas this program will print 1 followed by infinite twos: 
+
+Whereas this program will print 1 followed by infinite twos:
 
 ```
 cond: bool = const true;
@@ -158,18 +152,119 @@ while cond {
         continue 0;
     }
 }
-`
 ```
+
+## Interpreter Changes
+
+### New Language Constructs
+
+We expanded Bril's control flow capabilities by introducing five new constructs to the interpreter type system:
+
+- `while` - For creating loops
+- `block` - For grouping instructions
+- `if` - For conditional execution
+- `break` - For exiting loops
+- `continue` - For skipping to the next loop iteration
+
+### Implementation Challenges
+
+The implementation complexity varied across these new constructs. The `break` and `continue` instructions were relatively straightforward as they act as terminals in the evaluation pipeline - they simply return an action to be handled by their parent control structure.
+
+However, the other three constructs (`while`, `block`, and `if`) demanded more sophisticated handling:
+
+```python
+case "if": {
+    if cond:
+        return evalBlock(children[0], state)
+    else:
+        return evalBlock(children[1], state)
+    return NEXT
+}
+
+case "block": {
+    const result = evalBlock(children[0], state);
+    if result.action == "break":
+        if result.level > 0:
+            return { action: "break", level: result.level - 1 }
+        else:
+            return NEXT
+    else if result.action === "continue":
+        if result.level > 0:
+            return { action: "continue", level: result.level - 1 }
+        else:
+            return NEXT
+    else:
+        return result
+}
+
+case "while": {
+    while True {
+        if !cond:
+            return NEXT:
+        const result = evalBlock(children[0], state);
+        if result.action == "break":
+            if result.level > 0:
+                return { action: "break", level: result.level - 1 }
+            else:
+                return NEXT;
+        else if result.action == "continue":
+            if result.level > 0:
+                return { action: "continue", level: result.level - 1 }
+            else:
+                continue
+        else if action in ["end", "speculate", "commit", "abort"]:
+            return result
+    }
+}
+case "break": {
+  return { action: "break", level: value };
+}
+case "continue": {
+  return { action: "continue", level: value };
+}
+
+```
+
+This evalBlock function was an additional evaluation helper function that was used to evaluate a block of instructions and return the resulting action. It was used to handle blocks of instructions in the children arrays:
+
+```typescript
+function evalBlock(instrs: bril.Instruction[], state: State): Action {
+  for (let i = 0; i < instrs.length; ++i) {
+    const instr = instrs[i];
+    if ("op" in instr) {
+      const action = evalInstr(instr, state);
+
+      switch (action.action) {
+        case "next":
+          break;
+        case "break":
+        case "continue":
+        case "end":
+        case "speculate":
+        case "commit":
+        case "abort":
+          return action;
+        default:
+          unreachable(action);
+          throw error(`unhandled action ${action.action}`);
+      }
+    }
+  }
+  return NEXT;
+}
+```
+
+The multi-level breaks and continues proved particularly challenging to implement, especially ensuring the correct bubble-up mechanism through nested control structures. Our solution hinged on the `level` counter, which elegantly tracks how many loop boundaries a `break` or `continue` statement needs to cross. During development, we encountered several cases where improper handling of the recursive evaluation caused programs to become trapped in infinite loops. These issues were difficult to debug — we ultimately resorted to execution profiling to trace the interpreter's control flow and identify where it was getting stuck. The resulting implementation not only handles complex control flow patterns correctly but does so with minimal additional overhead on the interpreter.
 
 ## Beyond Relooper
 
-The Beyond Relooper algorithm was described by Ramsey as a way to translate Cmm sources into WebAssembly, for this project we adapted the algorith to translate Bril into Briloop. We'll start by providing a high level overview of the algorithm and some of the adaptations we did as the source and target languages are different from what are presented in Ramsey's paper. 
+The Beyond Relooper algorithm was described by Ramsey as a way to translate Cmm sources into WebAssembly, for this project we adapted the algorith to translate Bril into Briloop. We'll start by providing a high level overview of the algorithm and some of the adaptations we did as the source and target languages are different from what are presented in Ramsey's paper.
 
-The Beyond Relooper algorithm takes as input the Dominator Tree of a Control Flow Graph, with the important characteristic that the children in the tree are sorted in descending reverse post order, and produces the Briloop Program as an output. It is implemented as a recursive function over the structure of the dominator tree, where the current node is translated into either a while statement, a list of briloop instructions, or a block statement: 
+The Beyond Relooper algorithm takes as input the Dominator Tree of a Control Flow Graph, with the important characteristic that the children in the tree are sorted in descending reverse post order, and produces the Briloop Program as an output. It is implemented as a recursive function over the structure of the dominator tree, where the current node is translated into either a while statement, a list of briloop instructions, or a block statement:
 
-*  A basic block is translated into a while statement if it is a loop header, we use Ramsey's definition of a block header being a loop header if it has a predecessor with a larger reverse post order than itself rather than the more standard definition of a loop header being a node that has a predecessor that it dominates.
-* If a basic block is a merge node it is translated into a briloop block statement, to support breaking.
-* Otherwise, the basic block is translated into a flat list of briloop instructions. 
+- A basic block is translated into a while statement if it is a loop header, we use Ramsey's definition of a block header being a loop header if it has a predecessor with a larger reverse post order than itself rather than the more standard definition of a loop header being a node that has a predecessor that it dominates.
+- If a basic block is a merge node it is translated into a briloop block statement, to support breaking.
+- Otherwise, the basic block is translated into a flat list of briloop instructions.
 
 Detecting the different kinds of translations allows us to only introduce the minimal number of blocks needed for the translation.
 
@@ -177,12 +272,12 @@ Detecting the different kinds of translations allows us to only introduce the mi
 
 Identifying merge nodes is a key part of the briloop algorithm, they are defined as nodes that have at least 2 in edges from nodes with a smaller reverse post order. This means that in the original control flow, there are two basic blocks that jump into it and that thse nodes do not form a loop. Detecting them is important since we need to rely on block statements and break instructions in order to reach them (see Theorem three in Peterson, Kasami, and Tokura for more info).
 
-To see why this is needed, consider the following example (based on Ramsey): 
+To see why this is needed, consider the following example (based on Ramsey):
 ![Merge Nodes](merge-nodes.png)
 
-This translation proves difficult to translate without block and break statements as two basic blocks navigate to the same basic block, in this example both B and C are connected to E. If this were expressed in a language with no go to statements, programmers might rely on duplicating the E block in both branches: 
+This translation proves difficult to translate without block and break statements as two basic blocks navigate to the same basic block, in this example both B and C are connected to E. If this were expressed in a language with no go to statements, programmers might rely on duplicating the E block in both branches:
 
-```Java
+````Java
 // Block A
 public void foo(boolean l, boolean r) {
     System.out.println("Block A");
@@ -200,20 +295,17 @@ public void foo(boolean l, boolean r) {
         }
     }
     System.out.println("Block G");
-}
 
-```
+But we want our translation to be minimal, and not rely on duplicate blocks. The beyond relooper algorithm allows this to happen by using `break n;` statements (Peterson et. al.) refer to them as multi-level exit instructions:
 
-But we want our translation to be minimal, and not rely on duplicate blocks. The beyond relooper algorithm allows this to happen by using `break n;` statements (Peterson et. al. refer to them as multi-level exit instructions: 
-
-```
+```code
 @foo(l: bool, r: bool) {
     print a;
     block {
         block {
             if (l)
             then {
-                if (r) 
+                if (r)
                 then {
                     print b;
                     break 1;
@@ -229,6 +321,7 @@ But we want our translation to be minimal, and not rely on duplicate blocks. The
                 else {
                     print f;
                     break 1;
+                }
             }
         }
         print e;
@@ -237,19 +330,19 @@ But we want our translation to be minimal, and not rely on duplicate blocks. The
     print g;
     ret;
 }
-```
+````
 
-This translation may not be what programmers in languages like Java may write, but since the source contains an arbitrary control flow graph and those allow these kind of statements, we need a correct way to translate them. 
+This translation may not be what programmers in languages like Java may write, but since the source contains an arbitrary control flow graph and those allow these kind of statements, we need a correct way to translate them.
 
 ### Loop Nodes
 
 Loop nodes are easier to translate, and only two conditions need to be met:
 
-* Loop headers must be translated into while statements. 
-* When jumping to a loop header we use a `continue n;` instruction, where n is how many control flow statements we need to skip. 
+- Loop headers must be translated into while statements.
+- When jumping to a loop header we use a `continue n;` instruction, where n is how many control flow statements we need to skip.
 
 The use of while loops introduces a couple of quirks, one to the language and one to the translation from bril to briloop programs. The language quirk is that not only are you able to execute continue inside of block statements (in which case it behaves just like a break), but you the level passed to the continue statement must take into account block statements. In the following example we can see the behavior at play, foo will print a, b, c repeatedly whereas bar will print a, b
-repeatedly. 
+repeatedly.
 
 ```
 @foo(cond: bool) {
@@ -275,7 +368,7 @@ repeatedly.
 }
 ```
 
-The quirk from the translation to bril to briloop is that we rely on all while loops to execute forever and rely on break statements to terminate the loop execution. This has the unfortunate consequence of worsening performance for loops (especially nested ones) as we introduce a true variable before every while translation. 
+The quirk from the translation to bril to briloop is that we rely on all while loops to execute forever and rely on break statements to terminate the loop execution. This has the unfortunate consequence of worsening performance for loops (especially nested ones) as we introduce a true variable before every while translation.
 
 ## Results
 
