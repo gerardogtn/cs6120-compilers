@@ -160,9 +160,126 @@ while cond {
 }
 `
 ```
-# Results
 
-## Impact of Brilooped Transformation on Dynamic Instruction Count
+## Beyond Relooper
+
+The Beyond Relooper algorithm was described by Ramsey as a way to translate Cmm sources into WebAssembly, for this project we adapted the algorith to translate Bril into Briloop. We'll start by providing a high level overview of the algorithm and some of the adaptations we did as the source and target languages are different from what are presented in Ramsey's paper. 
+
+The Beyond Relooper algorithm takes as input the Dominator Tree of a Control Flow Graph, with the important characteristic that the children in the tree are sorted in descending reverse post order, and produces the Briloop Program as an output. It is implemented as a recursive function over the structure of the dominator tree, where the current node is translated into either a while statement, a list of briloop instructions, or a block statement: 
+
+*  A basic block is translated into a while statement if it is a loop header, we use Ramsey's definition of a block header being a loop header if it has a predecessor with a larger reverse post order than itself rather than the more standard definition of a loop header being a node that has a predecessor that it dominates.
+* If a basic block is a merge node it is translated into a briloop block statement, to support breaking.
+* Otherwise, the basic block is translated into a flat list of briloop instructions. 
+
+Detecting the different kinds of translations allows us to only introduce the minimal number of blocks needed for the translation.
+
+### Merge nodes
+
+Identifying merge nodes is a key part of the briloop algorithm, they are defined as nodes that have at least 2 in edges from nodes with a smaller reverse post order. This means that in the original control flow, there are two basic blocks that jump into it and that thse nodes do not form a loop. Detecting them is important since we need to rely on block statements and break instructions in order to reach them (see Theorem three in Peterson, Kasami, and Tokura for more info).
+
+To see why this is needed, consider the following example (based on Ramsey): 
+![Merge Nodes](merge-nodes.png)
+
+This translation proves difficult to translate without block and break statements as two basic blocks navigate to the same basic block, in this example both B and C are connected to E. If this were expressed in a language with no go to statements, programmers might rely on duplicating the E block in both branches: 
+
+```Java
+// Block A
+public void foo(boolean l, boolean r) {
+    System.out.println("Block A");
+    if (l) {
+        if (r) {
+            System.out.println("Block B");
+        } else {
+            System.out.println("Block E");
+        }
+    } else {
+        if (r) {
+            System.out.println("Block E");
+        } else {
+            System.out.println("Block F");
+        }
+    }
+    System.out.println("Block G");
+}
+
+```
+
+But we want our translation to be minimal, and not rely on duplicate blocks. The beyond relooper algorithm allows this to happen by using `break n;` statements (Peterson et. al. refer to them as multi-level exit instructions: 
+
+```
+@foo(l: bool, r: bool) {
+    print a;
+    block {
+        block {
+            if (l)
+            then {
+                if (r) 
+                then {
+                    print b;
+                    break 1;
+                } else {
+                    break 0;
+                }
+            }
+            else {
+                if (r)
+                then {
+                    break 0;
+                }
+                else {
+                    print f;
+                    break 1;
+            }
+        }
+        print e;
+        break 0;
+    }
+    print g;
+    ret;
+}
+```
+
+This translation may not be what programmers in languages like Java may write, but since the source contains an arbitrary control flow graph and those allow these kind of statements, we need a correct way to translate them. 
+
+### Loop Nodes
+
+Loop nodes are easier to translate, and only two conditions need to be met:
+
+* Loop headers must be translated into while statements. 
+* When jumping to a loop header we use a `continue n;` instruction, where n is how many control flow statements we need to skip. 
+
+The use of while loops introduces a couple of quirks, one to the language and one to the translation from bril to briloop programs. The language quirk is that not only are you able to execute continue inside of block statements (in which case it behaves just like a break), but you the level passed to the continue statement must take into account block statements. In the following example we can see the behavior at play, foo will print a, b, c repeatedly whereas bar will print a, b
+repeatedly. 
+
+```
+@foo(cond: bool) {
+    while cond {
+        print a;
+        block {
+            print b;
+            continue 0;
+        }
+        print c;
+    }
+}
+
+@bar(cond: bool) {
+    while cond {
+        print a;
+        block {
+            print b;
+            continue 1;
+        }
+        print c;
+    }
+}
+```
+
+The quirk from the translation to bril to briloop is that we rely on all while loops to execute forever and rely on break statements to terminate the loop execution. This has the unfortunate consequence of worsening performance for loops (especially nested ones) as we introduce a true variable before every while translation. 
+
+## Results
+
+### Impact of Brilooped Transformation on Dynamic Instruction Count
 
 Our analysis of the Bril to Brilooped transformation using the relooper algorithm shows significant variations in dynamic instruction count across different benchmarks. As shown in Figure 1, the majority of benchmarks (37 out of 38) experienced an increase in dynamic instruction count after transformation, with only the `collatz` benchmark showing a reduction (-6.51%) due to `br` and `jmp` instructions making up a majority of the functionality. The changes in dynamic instruction count ranged from minimal increases (below 1%) for benchmarks like `sum-check` and `lcm` to substantial increases exceeding 30% for benchmarks such as `binary-fmt` (28.00%), `hanoi` (31.31%), and `pythagorean_triple` (37.60%).
 
@@ -170,7 +287,7 @@ Our analysis of the Bril to Brilooped transformation using the relooper algorith
 
 The blue dashed line in Figure 1 is the average (9.06%) change in dynamic instructions after the transformation. 11 of the benchmarks were significantly above (>15%) this average while 9 were significantly below (<1%), leading to a large standard deviation (9.75%)
 
-## Execution Time Analysis Across Benchmarks
+### Execution Time Analysis Across Benchmarks
 
 Figure 2 presents the speedup ratios (Before/After) across all benchmarks. The majority of speedup ratios fall below 1.0 (collatz is the only outlier), indicating an increase in execution time after transformation to Brilooped. The average performance across all benchmarks shows:
 
@@ -182,7 +299,7 @@ Figure 2 presents the speedup ratios (Before/After) across all benchmarks. The m
 
 The speedup ratios vary considerably across benchmarks, with `pythagorean_triple` showing the most significant slowdown (speedup ratio of approximately 0.73 or 27% slowdown), while benchmarks like `collatz` exhibited speedup ratios near or slightly above 1.0, indicating slight improvement to performance. Benchmarks like `pythagorean_triple` struggle in this category due to nested loops.
 
-## Relationship Between Benchmark Size and Transformation Impact
+### Relationship Between Benchmark Size and Transformation Impact
 
 Figure 3 illustrates the relationship between benchmark size (measured in dynamic instructions before the transformation) and the percentage change in dynamic instructions. This shows some interesting patterns:
 
@@ -197,13 +314,13 @@ Figure 3 illustrates the relationship between benchmark size (measured in dynami
 2. There doesn't seem to be any strong correlation between benchmark size and the magnitude of impact from the Brilooped transformation. Both small and large benchmarks showed varying degrees of change. Benchmarks clustered around the 10^2 instruction count range had the greatest variance, ranging from approximately -6% to +31%.
    - Note: this could be a product of the benchmark suite.
 
-## Before vs. After Comparison with Percentage Changes
+### Before vs. After Comparison with Percentage Changes
 
 Figure 4 provides a comparison of the total dynamic instructions before and after the Brilooped transformation on a logarithmic scale, along with the percentage changes for each benchmark. The top graph demonstrates that while the absolute instruction count increases for almost all benchmarks, the relative differences vary significantly.
 
 ![Figure 4: Before vs After Comparison (Log Scale) with Percentage Changes](log_scale_comparison.png)
 
-## Summary of Findings
+### Summary of Findings
 
 1. The Brilooped transformation using the relooper algorithm resulted in increased dynamic instruction counts for 37 out of 38 benchmarks, with increases ranging from negligible to substantial (up to 37.60%).
 

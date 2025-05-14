@@ -1,0 +1,23 @@
+digraph MyGraph {
+    rankdir=TB
+    
+    // nodes
+    A[label=A, shape=ellipse];
+    B[label=B, shape=ellipse];
+    C[label=C, shape=ellipse];
+    D[label=D, shape=ellipse];
+    E[label=E, shape=ellipse];
+    F[label=F, shape=ellipse];
+    G[label=G, shape=ellipse];
+
+    // edges
+    A -> B;
+    A -> C;
+    B -> D;
+    B -> E;
+    C -> E;
+    C -> F;
+    D -> G;
+    E -> G;
+    F -> G;
+}
